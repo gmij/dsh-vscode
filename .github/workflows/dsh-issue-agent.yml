@@ -39,7 +39,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 10831645447f1aecd8b3689ad6e73fa2916e5f5e
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
       - run: python -m unittest discover -s scripts -p 'test_*.py'
@@ -57,7 +60,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 10831645447f1aecd8b3689ad6e73fa2916e5f5e
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
       - run: python scripts/issue_agent.py setup
@@ -82,7 +88,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 10831645447f1aecd8b3689ad6e73fa2916e5f5e
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
       - id: route
@@ -113,7 +122,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 10831645447f1aecd8b3689ad6e73fa2916e5f5e
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
       - uses: actions/setup-node@v4
@@ -176,7 +188,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 10831645447f1aecd8b3689ad6e73fa2916e5f5e
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
       - uses: actions/setup-node@v4
@@ -218,7 +233,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 10831645447f1aecd8b3689ad6e73fa2916e5f5e
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
       - uses: actions/download-artifact@v4
