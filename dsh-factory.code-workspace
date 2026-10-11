@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "DSH VS Code Extension"
+    },
+    {
+      "path": "../dsh-actions-connectivity",
+      "name": "DSH Agent Execution"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.DS_Store": true
+    }
+  }
+}
