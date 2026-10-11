@@ -1,0 +1,40 @@
+{
+  "name": "dsh-vscode",
+  "displayName": "DSH Workspace",
+  "description": "DeepSeek Harness GitHub project binding for VS Code",
+  "version": "0.1.0",
+  "publisher": "gmij",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dshWorkspace.setup",
+        "title": "DSH Workspace: Setup Project"
+      },
+      {
+        "command": "dshWorkspace.status",
+        "title": "DSH Workspace: Check Project"
+      },
+      {
+        "command": "dshWorkspace.openDiscussion",
+        "title": "DSH Workspace: Open Discussions"
+      },
+      {
+        "command": "dshWorkspace.runAgent",
+        "title": "DSH Workspace: Run Existing Agent Workflow"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/extension.js && node --check src/project.js"
+  },
+  "license": "MIT"
+}
