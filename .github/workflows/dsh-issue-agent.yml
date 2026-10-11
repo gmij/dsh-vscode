@@ -157,6 +157,9 @@ jobs:
             ${{ runner.temp }}/issue-agent/repair-result.jsonl
             ${{ runner.temp }}/issue-agent/repair-errors.log
             ${{ runner.temp }}/issue-agent/contract-error.txt
+            ${{ runner.temp }}/issue-agent/stage-*.json
+            ${{ runner.temp }}/issue-agent/stage-*.jsonl
+            ${{ runner.temp }}/issue-agent/stage-*.log
           if-no-files-found: ignore
           retention-days: 7
       - uses: actions/upload-artifact@v4
