@@ -29,7 +29,10 @@ def api(method, path, body=None):
             return json.loads(raw) if raw else None
     except urllib.error.HTTPError as error:
         # Do not expose response bodies or credentials to the model.
-        raise ValueError(f'GitHub API HTTP {error.code}; check repository-scoped Actions write and Issues read permissions') from None
+        operation = ('issue_read' if method == 'GET' and '/issues/' in path else
+                     'repo_read' if method == 'GET' else
+                     'workflow_dispatch' if method == 'POST' and '/dispatches' in path else 'other')
+        raise ValueError(f'GitHub API HTTP {error.code} at {operation}; check Agents secret token and repository permissions') from None
 
 
 def dispatch(arguments):
