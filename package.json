@@ -29,6 +29,14 @@
       {
         "command": "dshWorkspace.runAgent",
         "title": "DSH Workspace: Run Existing Agent Workflow"
+      },
+      {
+        "command": "dshWorkspace.attachExecutionRepo",
+        "title": "DSH Workspace: Attach Agent Execution Repository"
+      },
+      {
+        "command": "dshWorkspace.checkExecutionRepo",
+        "title": "DSH Workspace: View Agent Workflow"
       }
     ]
   },
