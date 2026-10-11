@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 8026225cf8a17cbeaabe5692d42c273ac56c4d18
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin de7e93e6b3c73bfd33e727b707c2759eb78eaf04
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 8026225cf8a17cbeaabe5692d42c273ac56c4d18
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin de7e93e6b3c73bfd33e727b707c2759eb78eaf04
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -90,7 +90,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 8026225cf8a17cbeaabe5692d42c273ac56c4d18
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin de7e93e6b3c73bfd33e727b707c2759eb78eaf04
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -124,7 +124,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 8026225cf8a17cbeaabe5692d42c273ac56c4d18
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin de7e93e6b3c73bfd33e727b707c2759eb78eaf04
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -193,7 +193,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 8026225cf8a17cbeaabe5692d42c273ac56c4d18
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin de7e93e6b3c73bfd33e727b707c2759eb78eaf04
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -238,7 +238,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 8026225cf8a17cbeaabe5692d42c273ac56c4d18
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin de7e93e6b3c73bfd33e727b707c2759eb78eaf04
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
