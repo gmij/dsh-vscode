@@ -1,30 +1,29 @@
-# DSH Workspace for VS Code
+# DSH VS Code — Issue 驱动开发工作流
 
-使用 **DeepSeek Harness (DSH)** 作为 Agent Runtime 的 VS Code 工程工作台。本项目不是 Nous Research Hermes Agent。
+核心目标：使用 DeepSeek Harness (DSH) + GitHub Actions，以本仓库的 GitHub Issues 为需求入口，自动指派 Agent 进行分析、设计和原型交付，并逐步扩展至开发与测试。
 
-## 现已提交（M0 初版）
+## 已接入：Issue → Agent → Actions → Issue
 
-- `DSH Workspace: Setup Project`：选择本地 Git 目录，校验 `origin`，验证 GitHub 仓库访问权限。
-- `DSH Workspace: Check Project`：读取远程 Issues 和 Milestones。
-- `DSH Workspace: Open Discussions`：打开 GitHub 讨论区（尚未实现会话同步）。
-- `DSH Workspace: Run Existing Agent Workflow`：人工确认后触发 `gmij/dsh-actions-connectivity` 的现有 `run-agent.yml` 连通性任务。
-- 基于 VS Code `workspaceState` 存储当前绑定；包含单元测试与 GitHub Actions CI。
+1. 在本仓库 Issues 创建需求，写明验收条件。
+2. 为 Issue 添加 `agent:reviewer`、`agent:prototype`、`agent:overview`、`agent:detailed` 等标签（或者正文 `### Agent` + agent ID）。
+3. 本仓库 `.github/workflows/dsh-issue-agent.yml` 自动执行，运行时从 `gmij/dsh-actions-connectivity` 拉取可信的 Agent Registry、Router、脚本和提示词。
+4. 使用本仓库的 Issue 与源码作为任务上下文，在本仓库 Actions 内运行无头 DSH。
+5. 将结果写回当前 Issue，原型和设计附件保留在当前仓库 Actions Artifacts。
 
-**尚未完成**：DSH 原生聊天桥接、独立项目引导 Webview、Conversation→Discussion 写入、GitLab Adapter 和自动里程碑规划。已追踪为 [Issues #1–#5](https://github.com/gmij/dsh-vscode/issues)。
+**能力边界**：现在只有 connectivity、reviewer、prototype、overview、detailed 等模式，源引擎关闭了代码修改工具。能自动交付分析、原型和设计，但目前不能真正自动修改代码并创建 PR。开发、测试 Agent 和 PR 交付仍需后续实施。
 
-## 本地运行扩展（开发模式）
+## 当前验收
 
-1. 安装 Node.js 22、Git、[GitHub CLI](https://cli.github.com/) 和 VS Code。
-2. 运行 `gh auth login`；需要实际可访问的测试仓库。
-3. 在扩展仓库运行 `npm run check && npm test`。
-4. 用 VS Code 打开本仓库，按 `F5` 启动 Extension Development Host。
-5. 在测试窗口的命令面板运行 `DSH Workspace: Setup Project`，选择已克隆的 GitHub 仓库目录，按提示绑定。
-6. 运行 `DSH Workspace: Check Project` 检查实际读取状态。
+- [x] 新仓库已通过 Actions 初始化 Agent 标签与执行路由。
+- [ ] Issue 真实触发 Agent 执行并回写结果。
+- [ ] 实现能够修改源码、运行测试、创建 PR 的开发 Agent。
+- [ ] 将持续对话、项目绑定和 Discussions 同步接入 VS Code。
 
-## 架构分工
+## 项目结构
 
-- `gmij/dsh-vscode`：交互与项目控制面。
-- `gmij/dsh-actions-connectivity`：已验证的无头 DSH 与 GitHub Actions 执行面。
-- 本阶段 **不包括 AHP/微信**。先打通本地 VS Code 与 GitHub 工作流。
+- `src/`: VS Code 扩展骨架和 GitHub 项目绑定。
+- `.github/workflows/dsh-issue-agent.yml`: Issue 自动分派 Agent（核心）。
+- `.github/workflows/ci.yml`: 扩展 CI。
+- `docs/architecture.md`: 设计和边界。
 
-详细接口契约见 [docs/architecture.md](docs/architecture.md)。
+`dsh-factory.code-workspace` 只是可选的本地调试配置，并非项目集成或 Agent 分派所必需。
