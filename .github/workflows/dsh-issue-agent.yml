@@ -10,9 +10,9 @@ on:
         required: true
         type: string
       agent:
-        description: Registered agent ID (empty uses Issue selection)
-        required: false
-        default: ''
+        description: Registered agent ID (overview, detailed, prototype, reviewer, connectivity)
+        required: true
+        default: overview
         type: string
       force:
         description: Retry an identical task (including a failed or cancelled run)
