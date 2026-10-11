@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "agents": {
+    "connectivity": {
+      "name": "连通性验证",
+      "description": "验证 DSH 模型接入与 Issue 自动运行链路",
+      "enabled": true,
+      "label": "agent:connectivity",
+      "patch": "agents/connectivity.patch.json",
+      "model": "gpt-5.4-mini",
+      "mode": "analysis"
+    },
+    "reviewer": {
+      "name": "代码审查",
+      "description": "分析 Issue 提供的代码及仓库快照，给出缺陷和修复建议",
+      "enabled": true,
+      "label": "agent:reviewer",
+      "patch": "agents/reviewer.patch.json",
+      "model": "gpt-5.4-mini",
+      "mode": "analysis"
+    },
+    "prototype": {
+      "name": "原型设计",
+      "description": "判断原型必要性，完成需求分析并交付极简交互原型",
+      "enabled": true,
+      "label": "agent:prototype",
+      "patch": "agents/prototype.patch.json",
+      "model": "gpt-5.4-mini",
+      "mode": "prototype"
+    },
+    "overview": {
+      "name": "概要设计",
+      "description": "可交互 MVP 里程碑、架构、模块边界、前后端契约与发布门槛",
+      "enabled": true,
+      "label": "agent:overview",
+      "patch": "agents/overview.patch.json",
+      "model": "claude-haiku-5.5",
+      "mode": "design",
+      "design_level": "overview",
+      "api": "anthropic-messages",
+      "max_output_tokens": 65536
+    },
+    "detailed": {
+      "name": "详细设计",
+      "description": "模块优先的前后端详细设计、模块内任务契约、界面文档、里程碑集成发布",
+      "enabled": true,
+      "label": "agent:detailed",
+      "patch": "agents/detailed.patch.json",
+      "model": "claude-haiku-5.5",
+      "mode": "design",
+      "design_level": "detailed",
+      "api": "anthropic-messages",
+      "max_output_tokens": 128000
+    }
+  }
+}
