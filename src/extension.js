@@ -45,6 +45,24 @@ function activate(context) {
    vscode.window.showInformationMessage('已请求运行；请在 Actions 页面检查结果');
   }catch(err){vscode.window.showErrorMessage('调度失败: '+err.message);}
  }
- context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent));
+ async function attachExecutionRepo(){
+  const choice=await vscode.window.showOpenDialog({canSelectFiles:false,canSelectFolders:true,canSelectMany:false,openLabel:'选择 dsh-actions-connectivity 的本地克隆'});
+  if(!choice?.[0])return;
+  const folder=choice[0];
+  try{
+   const origin=await run('git',['remote','get-url','origin'],folder.fsPath);
+   if(parseGitHubRemote(origin)?.toLowerCase()!==EXECUTION_REPO.toLowerCase())throw new Error('选择的目录并非 '+EXECUTION_REPO+'；origin='+origin);
+   if(vscode.workspace.workspaceFolders?.some(w=>w.uri.toString()===folder.toString())){vscode.window.showInformationMessage('执行仓库已在工作区中');return;}
+   const index=vscode.workspace.workspaceFolders?.length||0;
+   const changed=vscode.workspace.updateWorkspaceFolders(index,0,{uri:folder,name:'DSH Agent Execution'});
+   if(changed)vscode.window.showInformationMessage('已将执行仓库加入 VS Code 工作区（不会修改其代码）');
+   else vscode.window.showErrorMessage('VS Code 未能修改工作区；请先保存或打开多根工作区');
+  }catch(err){vscode.window.showErrorMessage('关联执行仓库失败: '+err.message);}
+ }
+ async function checkExecutionRepo(){
+  const target='https://github.com/'+EXECUTION_REPO+'/actions/workflows/issue-agent.yml';
+  await vscode.env.openExternal(vscode.Uri.parse(target));
+ }
+ context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
 }
 module.exports={activate,deactivate(){}};
