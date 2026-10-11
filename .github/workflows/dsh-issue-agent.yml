@@ -1,0 +1,235 @@
+name: Issue DSH agent
+run-name: "DSH Issue #${{ github.event.issue.number || inputs.issue_number || 'setup' }}"
+on:
+  issues:
+    types: [opened, labeled, assigned, reopened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Existing open Issue number
+        required: true
+        type: string
+      agent:
+        description: Registered agent ID (empty uses Issue selection)
+        required: false
+        default: ''
+        type: string
+      force:
+        description: Retry an identical task (including a failed or cancelled run)
+        default: false
+        type: boolean
+  push:
+    paths: ['.github/workflows/dsh-issue-agent.yml', 'src/**', 'test/**', 'package.json']
+permissions:
+  contents: read
+concurrency:
+  group: dsh-vscode-issue-${{ github.event.issue.number || inputs.issue_number || 'setup' }}
+  cancel-in-progress: false
+  queue: max
+jobs:
+  test:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load trusted DSH execution engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - run: python -m unittest discover -s scripts -p 'test_*.py'
+  setup:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load trusted DSH execution engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - run: python scripts/issue_agent.py setup
+        env:
+          GH_TOKEN: ${{ github.token }}
+  route:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      run: ${{ steps.route.outputs.run }}
+      agent: ${{ steps.route.outputs.agent }}
+      issue_number: ${{ steps.route.outputs.issue_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load trusted DSH execution engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - id: route
+        run: python scripts/issue_agent.py route
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: steps.route.outputs.run == 'true'
+        with:
+          name: issue-agent-input
+          path: ${{ runner.temp }}/issue-agent/
+          retention-days: 7
+  agent:
+    outputs:
+      preview: ${{ steps.worker.outputs.preview }}
+    needs: route
+    if: needs.route.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      copilot-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load trusted DSH execution engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: issue-agent-input
+          path: ${{ runner.temp }}/issue-agent/
+      - run: npm install --prefix "$RUNNER_TEMP/dsh" --no-audit --no-fund @deepseek-ai/dsh@0.2.1-alpha.2
+      - name: Run registered DSH agent
+        id: worker
+        run: python scripts/issue_agent.py run
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+      - name: Diagnostics
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/issue-agent/errors.log" ]; then cat "$RUNNER_TEMP/issue-agent/errors.log"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: issue-agent-result
+          path: |
+            ${{ runner.temp }}/issue-agent/answer.md
+            ${{ runner.temp }}/issue-agent/result.jsonl
+            ${{ runner.temp }}/issue-agent/errors.log
+            ${{ runner.temp }}/issue-agent/repair-result.jsonl
+            ${{ runner.temp }}/issue-agent/repair-errors.log
+            ${{ runner.temp }}/issue-agent/contract-error.txt
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: success() && steps.worker.outputs.preview == 'true'
+        with:
+          name: prototype-deliverable
+          path: ${{ runner.temp }}/issue-agent/prototype/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: success() && (needs.route.outputs.agent == 'overview' || needs.route.outputs.agent == 'detailed')
+        with:
+          name: design-deliverable
+          path: ${{ runner.temp }}/issue-agent/design/
+          if-no-files-found: error
+          retention-days: 30
+  capture:
+    needs: agent
+    if: needs.agent.outputs.preview == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load trusted DSH execution engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: prototype-deliverable
+          path: ${{ runner.temp }}/capture-input
+      - name: Install isolated screenshot renderer
+        run: |
+          npm install --prefix "$RUNNER_TEMP/render" --no-audit --no-fund playwright@1.64.0
+          "$RUNNER_TEMP/render/node_modules/.bin/playwright" install chromium --with-deps
+      - name: Capture desktop and mobile prototype screenshots
+        run: node scripts/capture_prototype.mjs
+        env:
+          RENDER_PACKAGE_PATH: ${{ runner.temp }}/render
+          PROTOTYPE_DIR: ${{ runner.temp }}/capture-input
+          SCREENSHOT_DIR: ${{ runner.temp }}/screenshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prototype-screenshots
+          path: ${{ runner.temp }}/screenshots/
+          retention-days: 30
+  publish:
+    needs: [route, agent]
+    if: always() && needs.route.result == 'success' && needs.route.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load trusted DSH execution engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/gmij/dsh-actions-connectivity.git "$RUNNER_TEMP/dsh-engine"
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: issue-agent-result
+          path: ${{ runner.temp }}/issue-agent/
+      - name: Report result to Issue
+        run: python scripts/issue_agent.py publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ needs.route.outputs.issue_number }}
+          AGENT_ID: ${{ needs.route.outputs.agent }}
+          AGENT_RESULT: ${{ needs.agent.result }}
