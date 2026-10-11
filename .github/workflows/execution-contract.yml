@@ -1,0 +1,23 @@
+name: Execution repository contract
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/execution-contract.yml
+      - scripts/check-execution-contract.mjs
+  pull_request:
+    paths:
+      - .github/workflows/execution-contract.yml
+      - scripts/check-execution-contract.mjs
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify upstream workflow interface without executing agents
+        run: node scripts/check-execution-contract.mjs
