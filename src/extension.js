@@ -2,9 +2,11 @@
 const vscode=require('vscode');
 const {verifyBinding,run,parseGitHubRemote}=require('./project');
 const {ACPClient}=require('./acp');
+const {Profiles,newId}=require('./profiles');
 const KEY='dshWorkspace.project.v1';
 const EXECUTION_REPO='gmij/dsh-actions-connectivity';
 function activate(context) {
+ const profiles=new Profiles(context);
  const project=()=>context.workspaceState.get(KEY);
  async function setup() {
   const selected=await vscode.window.showOpenDialog({canSelectFiles:false,canSelectFolders:true,canSelectMany:false,openLabel:'选择本地 Git 工作目录'});
@@ -46,6 +48,46 @@ function activate(context) {
    vscode.window.showInformationMessage('已请求运行；请在 Actions 页面检查结果');
   }catch(err){vscode.window.showErrorMessage('调度失败: '+err.message);}
  }
+
+ async function editProfile(existing){
+  const name=await vscode.window.showInputBox({title:'AI 站点名称',value:existing?.name||'',prompt:'例如 我的 OpenAI 代理 / Claude 服务'});if(!name)return;
+  const baseURL=await vscode.window.showInputBox({title:'API 端点（HTTPS）',value:existing?.baseURL||'https://api.openai.com/v1',prompt:'使用服务商文档给出的 Base URL'});if(!baseURL)return;
+  const protocol=await vscode.window.showQuickPick(['openai-completions','openai-responses','anthropic-messages'].map(x=>({label:x})),{title:'该站点的 API 协议'});if(!protocol)return;
+  const models=await vscode.window.showInputBox({title:'模型清单',value:existing?.models?.join(', ')||'',prompt:'逗号分隔，模型 ID 必须与端点实际支持的一致'});if(!models)return;
+  const key=await vscode.window.showInputBox({title:'API Key（保存在 VS Code SecretStorage）',password:true,ignoreFocusOut:true,prompt:existing?'留空则保留原来的密钥':'请输入该站点 API Key'});
+  if(key===undefined)return;
+  try{
+   const saved=await profiles.upsert({id:existing?.id||newId(),name,baseURL,api:protocol.label,models:models.split(',').map(x=>x.trim()).filter(Boolean)},key);
+   vscode.window.showInformationMessage('AI 站点已保存：'+saved.name+'（密钥不会写入配置文件）');
+  }catch(error){vscode.window.showErrorMessage('站点配置无效：'+error.message);}
+ }
+ async function manageProfiles(){
+  const items=[{label:'$(add) 添加 AI 站点',kind:'add'},...profiles.all().map(p=>({label:p.name,description:p.api+' · '+p.baseURL,kind:'edit',profile:p}))];
+  const action=await vscode.window.showQuickPick(items,{title:'管理 AI 端点配置'});
+  if(!action)return;
+  if(action.kind==='add')return editProfile();
+  const choice=await vscode.window.showQuickPick(['编辑站点 / 模型清单','更新 API Key','删除站点'].map(label=>({label})),{title:action.profile.name});
+  if(!choice)return;
+  if(choice.label.startsWith('编辑'))return editProfile(action.profile);
+  if(choice.label.startsWith('更新')){
+   const secret=await vscode.window.showInputBox({title:'更新 '+action.profile.name+' 的 API Key',password:true,ignoreFocusOut:true});
+   if(secret)await profiles.upsert(action.profile,secret);
+   return;
+  }
+  const confirm=await vscode.window.showWarningMessage('删除 '+action.profile.name+' 及其密钥？',{modal:true},'删除');
+  if(confirm==='删除')await profiles.remove(action.profile.id);
+ }
+ async function selectProfile(){
+  const all=profiles.all();
+  if(!all.length){await editProfile();if(!profiles.all().length)return null;}
+  const selected=await vscode.window.showQuickPick(profiles.all().flatMap(p=>p.models.map(model=>({
+    label:model,description:p.name+' · '+p.api,profile:p,model
+  }))),{title:'切换 AI 站点及模型'});
+  if(!selected)return null;
+  await profiles.select(selected.profile.id,selected.model);
+  vscode.window.showInformationMessage('当前模型：'+selected.profile.name+' / '+selected.model);
+  return selected;
+ }
  async function chat() {
   const bound=project();
   if(!bound){vscode.window.showWarningMessage('请先执行 Setup Project');return;}
@@ -54,12 +96,20 @@ function activate(context) {
   if(!folder || !fs.existsSync(folder)){vscode.window.showErrorMessage('绑定的本地工作目录不存在');return;}
   const config=vscode.workspace.getConfiguration('dshWorkspace');
   const command=config.get('dshCommand','dsh');
-  const provider=config.get('provider','');
-  const model=config.get('model','');
+  if(!profiles.selected()){const choice=await selectProfile();if(!choice)return;}
+  let selected=profiles.selected();
+  const provider=selected.profile.id;
+  const model=selected.model;
   const output=vscode.window.createOutputChannel('DSH ACP Chat');
   output.show(true);
   output.appendLine('项目: '+bound.repository+'\\n工作目录: '+folder+'\\n采用真实 DSH ACP；工具权限默认拒绝。');
-  const client=new ACPClient(command, folder, {provider, model,
+  let client;
+  const launch=async()=>{
+   const active=profiles.selected();
+   if(!active)throw new Error('尚未选择有效的 AI 站点/模型');
+   const apiKey=await profiles.credentials(active.profile.id);
+   if(!apiKey)throw new Error('请先在管理站点中配置 '+active.profile.name+' 的 API Key');
+   const running=new ACPClient(command,folder,{profile:active.profile,model:active.model,apiKey,
     onUpdate: t=>output.appendLine(t),
     onPermission: async request => {
       const options=(request.options||[]).filter(x=>typeof x.optionId==='string');
@@ -74,10 +124,13 @@ function activate(context) {
       });
       return selected?.id || null;
     }
-  });
+   });
+   await running.start();
+   return running;
+  };
   try{
-   await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'启动 DSH ACP'},()=>client.start());
-   const key='dshWorkspace.session.v1:'+folder;
+   client=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'启动 DSH ACP'},launch);
+   let key='dshWorkspace.session.v2:'+folder+':'+profiles.active().id+':'+profiles.active().model;
    let saved=context.workspaceState.get(key);
    let session=null;
    if(saved && saved.repository===bound.repository && saved.localPath===folder){
@@ -92,14 +145,35 @@ function activate(context) {
     saved={sessionId:session.sessionId};output.appendLine('已创建 ACP 会话: '+session.sessionId);
    }
    while(true){
-    const message=await vscode.window.showInputBox({title:'DSH ACP 连续对话',prompt:'输入消息；按 Esc 结束（会话可在下次恢复）',placeHolder:'向当前项目的 DSH 提问'});
-    if(!message)break;
+    const action=await vscode.window.showQuickPick([{label:'$(comment) 发送消息',kind:'message'},{label:'$(server) 切换站点 / 模型',kind:'switch'},{label:'$(gear) 管理站点配置',kind:'manage'},{label:'$(close) 结束聊天',kind:'exit'}],{title:'DSH ACP 对话 · '+profiles.selected().profile.name+' / '+profiles.selected().model});
+    if(!action||action.kind==='exit')break;
+    if(action.kind==='manage'){await manageProfiles();continue;}
+    if(action.kind==='switch'){
+      const previous=profiles.active();const switched=await selectProfile();
+      if(!switched||previous.id===switched.profile.id&&previous.model===switched.model)continue;
+      client.close();client=await launch();
+      key='dshWorkspace.session.v2:'+folder+':'+switched.profile.id+':'+switched.model;
+      saved=context.workspaceState.get(key);
+      if(saved && saved.repository===bound.repository && saved.localPath===folder){
+        await client.call('session/resume',{sessionId:saved.sessionId,cwd:folder,mcpServers:[]});
+        output.appendLine('切换并恢复模型对应会话: '+saved.sessionId);
+      }else{
+        const next=await client.call('session/new',{cwd:folder,mcpServers:[]});
+        if(!next?.sessionId)throw new Error('DSH 未返回 sessionId');
+        saved={sessionId:next.sessionId,repository:bound.repository,localPath:folder};
+        await context.workspaceState.update(key,saved);
+        output.appendLine('切换并创建模型对应会话: '+saved.sessionId);
+      }
+      continue;
+    }
+    const message=await vscode.window.showInputBox({title:'DSH 对话 · '+profiles.selected().model,prompt:'输入消息（对话动作菜单可随时切换站点及模型）'});
+    if(!message)continue;
     output.appendLine('\\n你: '+message);
     const result=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'DSH 正在回复...'},()=>client.call('session/prompt',{sessionId:saved.sessionId,prompt:[{type:'text',text:message}]}));
     output.appendLine('本轮完成: '+JSON.stringify(result));
    }
   }catch(err){vscode.window.showErrorMessage('DSH ACP 聊天失败: '+err.message);output.appendLine('错误: '+err.stack);}
-  finally{client.close();}
+  finally{client?.close();}
  }
  async function attachExecutionRepo(){
   const choice=await vscode.window.showOpenDialog({canSelectFiles:false,canSelectFolders:true,canSelectMany:false,openLabel:'选择 dsh-actions-connectivity 的本地克隆'});
@@ -119,6 +193,6 @@ function activate(context) {
   const target='https://github.com/'+EXECUTION_REPO+'/actions/workflows/issue-agent.yml';
   await vscode.env.openExternal(vscode.Uri.parse(target));
  }
- context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.chat',chat),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
+ context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.chat',chat),vscode.commands.registerCommand('dshWorkspace.manageProfiles',manageProfiles),vscode.commands.registerCommand('dshWorkspace.selectProfile',selectProfile),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
 }
 module.exports={activate,deactivate(){}};
