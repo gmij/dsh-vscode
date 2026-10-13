@@ -25,14 +25,14 @@ jobs:
           npm test
       - name: Produce installable VSIX
         run: |
-          npm exec --yes --package @vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dsh-workspace-0.1.0.vsix
-          test -s dsh-workspace-0.1.0.vsix
-          sha256sum dsh-workspace-0.1.0.vsix | tee dsh-workspace-0.1.0.sha256
+          npm exec --yes --package @vscode/vsce -- vsce package --no-dependencies --allow-missing-repository --out dsh-workspace-0.2.0.vsix
+          test -s dsh-workspace-0.2.0.vsix
+          sha256sum dsh-workspace-0.2.0.vsix | tee dsh-workspace-0.2.0.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: dsh-workspace-vsix
           path: |
-            dsh-workspace-0.1.0.vsix
-            dsh-workspace-0.1.0.sha256
+            dsh-workspace-0.2.0.vsix
+            dsh-workspace-0.2.0.sha256
           retention-days: 30
           if-no-files-found: error
