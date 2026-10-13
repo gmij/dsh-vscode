@@ -1,6 +1,7 @@
 'use strict';
 const vscode=require('vscode');
 const {verifyBinding,run,parseGitHubRemote}=require('./project');
+const {ACPClient}=require('./acp');
 const KEY='dshWorkspace.project.v1';
 const EXECUTION_REPO='gmij/dsh-actions-connectivity';
 function activate(context) {
@@ -45,6 +46,46 @@ function activate(context) {
    vscode.window.showInformationMessage('已请求运行；请在 Actions 页面检查结果');
   }catch(err){vscode.window.showErrorMessage('调度失败: '+err.message);}
  }
+ async function chat() {
+  const bound=project();
+  if(!bound){vscode.window.showWarningMessage('请先执行 Setup Project');return;}
+  const folder=bound.localPath;
+  const fs=require('node:fs');
+  if(!folder || !fs.existsSync(folder)){vscode.window.showErrorMessage('绑定的本地工作目录不存在');return;}
+  const config=vscode.workspace.getConfiguration('dshWorkspace');
+  const command=config.get('dshCommand','dsh');
+  const provider=config.get('provider','');
+  const model=config.get('model','');
+  const output=vscode.window.createOutputChannel('DSH ACP Chat');
+  output.show(true);
+  output.appendLine('项目: '+bound.repository+'\\n工作目录: '+folder+'\\n采用真实 DSH ACP；工具权限默认拒绝。');
+  const client=new ACPClient(command, folder, {provider, model, onUpdate: t=>output.appendLine(t)});
+  try{
+   await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'启动 DSH ACP'},()=>client.start());
+   const key='dshWorkspace.session.v1:'+folder;
+   let saved=context.workspaceState.get(key);
+   let session=null;
+   if(saved && saved.repository===bound.repository && saved.localPath===folder){
+    try{
+     session=await client.call('session/resume',{sessionId:saved.sessionId,cwd:folder,mcpServers:[]});
+     output.appendLine('已恢复同一 ACP 会话: '+saved.sessionId);
+    }catch(err){output.appendLine('恢复失败，不自动替换会话: '+err.message);throw err;}
+   } else {
+    session=await client.call('session/new',{cwd:folder,mcpServers:[]});
+    if(!session?.sessionId)throw new Error('DSH 未返回原生 sessionId');
+    await context.workspaceState.update(key,{sessionId:session.sessionId,repository:bound.repository,localPath:folder});
+    saved={sessionId:session.sessionId};output.appendLine('已创建 ACP 会话: '+session.sessionId);
+   }
+   while(true){
+    const message=await vscode.window.showInputBox({title:'DSH ACP 连续对话',prompt:'输入消息；按 Esc 结束（会话可在下次恢复）',placeHolder:'向当前项目的 DSH 提问'});
+    if(!message)break;
+    output.appendLine('\\n你: '+message);
+    const result=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'DSH 正在回复...'},()=>client.call('session/prompt',{sessionId:saved.sessionId,prompt:[{type:'text',text:message}]}));
+    output.appendLine('本轮完成: '+JSON.stringify(result));
+   }
+  }catch(err){vscode.window.showErrorMessage('DSH ACP 聊天失败: '+err.message);output.appendLine('错误: '+err.stack);}
+  finally{client.close();}
+ }
  async function attachExecutionRepo(){
   const choice=await vscode.window.showOpenDialog({canSelectFiles:false,canSelectFolders:true,canSelectMany:false,openLabel:'选择 dsh-actions-connectivity 的本地克隆'});
   if(!choice?.[0])return;
@@ -63,6 +104,6 @@ function activate(context) {
   const target='https://github.com/'+EXECUTION_REPO+'/actions/workflows/issue-agent.yml';
   await vscode.env.openExternal(vscode.Uri.parse(target));
  }
- context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
+ context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.chat',chat),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
 }
 module.exports={activate,deactivate(){}};
