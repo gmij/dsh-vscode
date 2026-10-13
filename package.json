@@ -2,7 +2,7 @@
   "name": "dsh-vscode",
   "displayName": "DSH Workspace",
   "description": "DeepSeek Harness GitHub project binding for VS Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "gmij",
   "private": true,
   "engines": {
@@ -37,12 +37,36 @@
       {
         "command": "dshWorkspace.checkExecutionRepo",
         "title": "DSH Workspace: View Agent Workflow"
+      },
+      {
+        "command": "dshWorkspace.chat",
+        "title": "DSH Workspace: Chat via Real ACP"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "DSH Workspace",
+      "properties": {
+        "dshWorkspace.dshCommand": {
+          "type": "string",
+          "default": "dsh",
+          "description": "Path to installed DSH executable; configure local DSH credentials separately."
+        },
+        "dshWorkspace.provider": {
+          "type": "string",
+          "default": "",
+          "description": "Optional ACP provider route; leave blank to use DSH profile."
+        },
+        "dshWorkspace.model": {
+          "type": "string",
+          "default": "",
+          "description": "Optional ACP model ID; leave blank to use DSH profile."
+        }
+      }
+    }
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "node --check src/extension.js && node --check src/project.js"
+    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js"
   },
   "license": "MIT"
 }
