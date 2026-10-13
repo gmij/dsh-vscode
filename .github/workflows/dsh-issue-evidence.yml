@@ -1,0 +1,33 @@
+name: DSH Issue Evidence Gate
+on:
+  workflow_run:
+    workflows: [Issue DSH agent]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Completed Issue DSH agent run ID to reconcile
+        required: true
+        default: '38188700247'
+        type: string
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: dsh-issue-evidence
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'issues' || github.event.workflow_run.event == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reconcile source execution evidence to original Issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id || github.event.workflow_run.id }}
+        run: python scripts/issue_evidence_gate.py
