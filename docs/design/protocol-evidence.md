@@ -56,3 +56,12 @@ TASK-01 必须在隔离目录内，使用同一份带版本与完整性信息的
 - **概要设计**：保留成功运行 `38188700247` 作为基线，不重复生成。
 - **TASK-01**：官方协议路径有文档依据，但缺少锁定版本、完整性和真实桌面实测，当前不可关闭。
 - **Wiki/Pages**：设计文档链接修复已合并到上游生成器，但当前下游仓库尚未具备独立发布闭环，导航交付尚不可签收。
+
+
+## 6. 2026-10-13 真实 ACP 集成测试结果与 VSIX
+
+- [GitHub Actions 真实 ACP 测试](https://github.com/gmij/dsh-vscode/actions/runs/38421905087) 使用固定 `@deepseek-ai/dsh@0.2.1-alpha.2`、真实 ACP stdio 进程和持久化 `DSH_HOME`：`initialize`、`session/new`、跨进程重启后的 `session/list`（包含原 sessionId）与 `session/resume` 均成功。
+- `session/prompt` 两次请求均**未成功**，确切原因是 GitHub Actions 内的 GitHub App 安装 Token 没有 `Copilot Requests` 权限，Copilot 兼容接口返回 HTTP 403。这是模型调用授权阻断，而不是 ACP 恢复功能失败；**不能把两轮对话勾为通过**。
+- 真实只读工具调用以及权限批准后的事件尚无成功证据，因此 TASK-01 总门禁继续标为 blocked。
+- 已新增 VSIX v0.2.0（[构建记录](https://github.com/gmij/dsh-vscode/actions/runs/38422798018)），包含实际 ACP stdio 客户端、本地会话 ID 绑定、连续输入、下次启动的原生 resume、工具权限人工审批，自动化单元测试与打包检查成功。该 VSIX 为**需要本地 DSH 凭据的功能预览版**，真实连续模型对话与工具调用仍需本机验收。
+- 若希望 GitHub Actions 完成模型侧 E2E，应配置具备模型请求权限的独立最小权限凭据（例如合适的 Secret），不可把普通 `GITHUB_TOKEN` 当作 Copilot Requests 权限。不要在 Issue、测试 Artifact、输出日志或 VSIX 中存储 API Key。
