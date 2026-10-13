@@ -67,3 +67,14 @@
 - 自定义端点及密钥直接交由本地 DSH 进程调用；请只使用你信任的服务商。此功能尚未使用带真实 API Key 的外部站点完成完整 E2E 验证。
 
 使用流程：安装 v0.3.0 → 安装 DSH CLI → **Manage AI Endpoints** 添加站点、模型和 API Key → **Setup Project** → **Chat via Real ACP** → 从聊天菜单随时切换模型。
+
+
+## v0.3.1 项目共享 AI 站点配置（明文密钥可选）
+
+1. 使用 `DSH Workspace: Manage AI Endpoints` 配置站点、模型和本地安全存储的 Key。
+2. 默认不开启明文。运行 `DSH Workspace: Save AI Endpoints to Project` 或管理菜单中的「保存站点到当前项目」时，会生成 `.dsh/ai-profiles.json`（**默认不含 Key**）和 `.dsh/ai-profiles.example.json`。
+3. 如确实需要项目团队共享明文密钥，在 VS Code Settings 勾选 **DSH Workspace: Allow Plaintext Project Keys**（`dshWorkspace.allowPlaintextProjectKeys`），再次保存项目配置前会弹出风险确认。只有确认后才将选中站点的 `apiKey` 写入 `.dsh/ai-profiles.json`。
+4. 插件默认在项目 `.gitignore` 中加入 `.dsh/ai-profiles.json`，阻止普通 Git 提交。**如果文件早已被 Git 跟踪，.gitignore 不能清除历史；需要另行取消跟踪并轮换密钥。**
+5. 其他项目成员运行 `DSH Workspace: Load AI Endpoints from Project`，可读取项目配置并把明文密钥迁入各自的 VS Code SecretStorage。无 Key 的模板也可用于分发站点及模型清单。
+
+请注意：明文文件的存在意味着所有有项目目录读取权限的人都可以获得密钥；即使有 `.gitignore`，共享目录、同步盘、备份及手工复制也可能泄露。建议团队统一用服务端短期密钥或专用组织凭据，避免共享个人长期 API Key。
