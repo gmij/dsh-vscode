@@ -54,3 +54,16 @@
 - 本地需能调用 `dsh` 命令，且 DSH 所需 credentials 必须自行完成安全配置；扩展不收集或保存 API Key。
 - GitHub Actions 的原生 ACP 验证已证实 `initialize`、`session/new`、`session/list`、`session/resume` 可以工作；连续模型调用目前卡在 GitHub Actions Token 缺少 `Copilot Requests` 权限（403）。不能将该测试结果写为已通过。
 - GitHub Actions 设计生成成功、Pages/Wiki 发布成功，与本地 VS Code 聊天和实际工具调用验收是独立事项。实际的对话文本与工具流仍需本机测试。
+
+
+## VSIX v0.3.0 · 多 AI 站点与模型切换
+
+- 命令面板：`DSH Workspace: Manage AI Endpoints`。新增/修改多个命名站点，为每个站点填入 **HTTPS Base URL**、API 协议（`openai-completions`、`openai-responses`、`anthropic-messages`）、逗号分隔的模型 ID 清单，并配置各自 API Key。
+- API Key 使用 VS Code 的 `SecretStorage` 独立保存；站点元数据通过 VS Code 全局状态持久化。**不会将 Key 写入 JSON、源码、工作区或 VSIX**。
+- 在管理菜单可导出、导入 `dsh-ai-profiles.json` 配置文件；导出只包含站点名称、URL、协议、模型，不包含任何 Key。导入后单独配置每个 Key。
+- 命令面板：`DSH Workspace: Switch AI Model`，在多个站点与模型之间选择。
+- 在 `DSH Workspace: Chat via Real ACP` 的操作菜单，选择 **切换站点 / 模型**，会安全关闭旧 ACP 子进程，以选择的站点配置创建新的 ACP 子进程，并按 `workspace + 站点 ID + 模型 ID` 独立保存与恢复会话。切换模型不向不同服务发送已有对话历史。
+- 当前界面仍是 InputBox/QuickPick + OutputChannel 的预览交互，而非最终 Copilot 风格侧栏。只支持上述 DSH provider 协议，服务端须与选择的协议兼容。
+- 自定义端点及密钥直接交由本地 DSH 进程调用；请只使用你信任的服务商。此功能尚未使用带真实 API Key 的外部站点完成完整 E2E 验证。
+
+使用流程：安装 v0.3.0 → 安装 DSH CLI → **Manage AI Endpoints** 添加站点、模型和 API Key → **Setup Project** → **Chat via Real ACP** → 从聊天菜单随时切换模型。
