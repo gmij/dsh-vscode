@@ -2,7 +2,7 @@
   "name": "dsh-vscode",
   "displayName": "DSH Workspace",
   "description": "DeepSeek Harness GitHub project binding for VS Code",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "gmij",
   "private": true,
   "engines": {
@@ -49,6 +49,14 @@
       {
         "command": "dshWorkspace.selectProfile",
         "title": "DSH Workspace: Switch AI Model"
+      },
+      {
+        "command": "dshWorkspace.saveProjectProfiles",
+        "title": "DSH Workspace: Save AI Endpoints to Project"
+      },
+      {
+        "command": "dshWorkspace.importProjectProfiles",
+        "title": "DSH Workspace: Load AI Endpoints from Project"
       }
     ],
     "configuration": {
@@ -58,13 +66,18 @@
           "type": "string",
           "default": "dsh",
           "description": "Path to installed DSH executable; configure local DSH credentials separately."
+        },
+        "dshWorkspace.allowPlaintextProjectKeys": {
+          "type": "boolean",
+          "default": false,
+          "description": "在项目 .dsh/ai-profiles.json 中明文保存 API Key（危险）。需要显式开启并再次确认。默认关闭。"
         }
       }
     }
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js"
+    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js"
   },
   "license": "MIT"
 }
