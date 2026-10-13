@@ -50,7 +50,7 @@
 
 ### 预览限制与测试边界
 
-- 工具权限请求默认 **拒绝**（fail-closed）。本 VSIX 尚不具备交互式工具审批 UX，因此不能用这个版本验证已授权的真实工具执行。
+- 工具权限请求在 VS Code 中显示审批选项，必须由用户亲自选择授权；按 Esc 或无匹配选项会**默认拒绝**（fail-closed）。是否真正收到与执行工具调用仍须通过本地 DSH 实测。
 - 本地需能调用 `dsh` 命令，且 DSH 所需 credentials 必须自行完成安全配置；扩展不收集或保存 API Key。
 - GitHub Actions 的原生 ACP 验证已证实 `initialize`、`session/new`、`session/list`、`session/resume` 可以工作；连续模型调用目前卡在 GitHub Actions Token 缺少 `Copilot Requests` 权限（403）。不能将该测试结果写为已通过。
 - GitHub Actions 设计生成成功、Pages/Wiki 发布成功，与本地 VS Code 聊天和实际工具调用验收是独立事项。实际的对话文本与工具流仍需本机测试。
