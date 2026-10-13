@@ -29,6 +29,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Validate evidence gate Python syntax
+        run: python -m py_compile scripts/issue_evidence_gate.py
       - name: Reconcile source execution evidence to original Issue
         env:
           GH_TOKEN: ${{ github.token }}
