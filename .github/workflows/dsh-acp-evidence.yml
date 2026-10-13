@@ -1,0 +1,39 @@
+name: DSH ACP Protocol Evidence
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/acp_protocol_smoke.py
+      - .github/workflows/dsh-acp-evidence.yml
+permissions:
+  contents: read
+jobs:
+  acp-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install exact DSH version
+        run: npm install --prefix "$RUNNER_TEMP/dsh" --no-audit --no-fund @deepseek-ai/dsh@0.2.1-alpha.2
+      - name: Record installed npm package version and integrity
+        run: |
+          node -p "require(process.env.RUNNER_TEMP+'/dsh/node_modules/@deepseek-ai/dsh/package.json').version"
+          npm view @deepseek-ai/dsh@0.2.1-alpha.2 dist.integrity > "$RUNNER_TEMP/dsh-package-integrity.txt"
+      - name: Probe real ACP stdio initialize and session/new
+        run: python scripts/acp_protocol_smoke.py
+      - name: Retain actual protocol evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task01-acp-evidence
+          path: |
+            ${{ runner.temp }}/dsh-acp-evidence/
+            ${{ runner.temp }}/dsh-package-integrity.txt
+          if-no-files-found: warn
+          retention-days: 30
