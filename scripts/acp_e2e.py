@@ -9,6 +9,7 @@ workspace=root/"acp-test-project";workspace.mkdir(exist_ok=True)
 (workspace/"README.md").write_text("ACP read-only integration probe. Unique token: ACPTASK01READONLY.")
 patch_file=root/"acp-model.patch.json"
 patch=[
+ {"id":"acp","config":{"provider":"github-copilot","model":"gpt-6.1-sol"}},
  {"id":"agent-default-model","config":{"provider":"github-copilot","model":"gpt-6.1-sol"}},
  {"id":"llm-pi-ai","config":{"providers":{"github-copilot":{"apiKeyEnv":"GITHUB_TOKEN","baseURL":"https://api.githubcopilot.com","api":"openai-responses","headers":{"Copilot-Integration-Id":"agentic-workflows"},"models":[{"id":"gpt-6.1-sol","maxTokens":8192}],"retryPolicy":{"mode":"normal","maxRetries":0}}}}}
 ]
