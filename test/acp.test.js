@@ -31,7 +31,7 @@ test('ACP forwards user-selected permission option, not arbitrary option', async
  const client=new ACPClient('unused','/tmp',{onPermission:async()=> 'allow-once'});
  let response;
  client.send=value=>{response=value;};
- client.receive(JSON.stringify({jsonrpc:'2.0',id:23,method:'session/request_permission',params:{options:[{optionId:'allow-once',name:'Allow once'}]}})+'\\n');
+ client.receive(JSON.stringify({jsonrpc:'2.0',id:23,method:'session/request_permission',params:{options:[{optionId:'allow-once',name:'Allow once'}]}})+'\n');
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(response.result.outcome,{outcome:'selected',optionId:'allow-once'});
  client.close();
