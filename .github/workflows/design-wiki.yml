@@ -1,0 +1,81 @@
+name: Design Wiki
+on:
+  workflow_run:
+    workflows: [Prototype Pages]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_ids:
+        description: Successful DSH design run IDs
+        required: true
+        default: '38188700247'
+        type: string
+      dry_run:
+        description: Generate reviewable preview only
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: dsh-vscode-design-wiki
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load pinned publishing engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin d8f0ad74d18cafc5786e288027c6eb186376af28
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - run: python -m unittest discover -s scripts -p 'test_*.py'
+  publish:
+    needs: verify
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+       (github.event.workflow_run.event == 'issues' || github.event.workflow_run.event == 'workflow_dispatch' ||
+        (github.event.workflow_run.event == 'push' && contains(github.event.workflow_run.head_commit.message, '[pages-backfill]'))))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Load pinned publishing engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/dsh-engine"
+          git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin d8f0ad74d18cafc5786e288027c6eb186376af28
+          git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
+          cp -R "$RUNNER_TEMP/dsh-engine/agents" .
+          cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
+      - name: Verify pages and publish navigation to Wiki
+        run: python scripts/design_wiki.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WIKI_TOKEN: ${{ secrets.WIKI_PUBLISH_TOKEN || github.token }}
+          SOURCE_RUN_IDS: ${{ inputs.source_run_ids || '38188700247' }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+      - name: Preserve Wiki preview regardless of publish outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-wiki-preview
+          path: ${{ runner.temp }}/design-wiki-preview/
+          if-no-files-found: ignore
+          retention-days: 30
