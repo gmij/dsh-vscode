@@ -3,6 +3,7 @@ const vscode=require('vscode');
 const {verifyBinding,run,parseGitHubRemote}=require('./project');
 const {ACPClient}=require('./acp');
 const {Profiles,newId}=require('./profiles');
+const projectProfiles=require('./project_profiles');
 const KEY='dshWorkspace.project.v1';
 const EXECUTION_REPO='gmij/dsh-actions-connectivity';
 function activate(context) {
@@ -85,11 +86,59 @@ function activate(context) {
    vscode.window.showInformationMessage('已导入 '+data.profiles.length+' 个站点，请在管理站点中分别设置 API Key。');
   }catch(error){vscode.window.showErrorMessage('导入失败：'+error.message);}
  }
+ async function saveProjectProfiles(){
+  const bound=project();
+  if(!bound?.localPath){vscode.window.showWarningMessage('请先绑定当前项目');return;}
+  const choices=profiles.all();
+  if(!choices.length){vscode.window.showWarningMessage('请先添加 AI 站点');return;}
+  const selected=await vscode.window.showQuickPick(choices.map(p=>({label:p.name,description:p.baseURL,profile:p})),{
+    title:'选择要保存到当前项目的 AI 站点',canPickMany:true
+  });
+  if(!selected?.length)return;
+  const setting=vscode.workspace.getConfiguration('dshWorkspace').get('allowPlaintextProjectKeys',false);
+  if(setting){
+    const ok=await vscode.window.showWarningMessage(
+      '你已开启“在项目配置文件中明文保存 API Key”。项目成员或 Git 提交历史可能暴露这些密钥。仅用于可信项目；插件会默认加入 .gitignore，但已被跟踪的文件需要你手动停止跟踪。',
+      {modal:true},'确认明文写入');
+    if(ok!=='确认明文写入')return;
+  }
+  const records=[];
+  for(const item of selected){
+    const p={...item.profile};
+    if(setting){
+      const secret=await profiles.credentials(p.id);
+      if(!secret){vscode.window.showErrorMessage(p.name+' 未配置 API Key，已取消导出');return;}
+      p.apiKey=secret;
+    }
+    records.push(p);
+  }
+  try{
+    // Protect even metadata-only file by default; user can explicitly version a keyless template.
+    projectProfiles.ensureIgnore(bound.localPath);
+    const file=projectProfiles.save(bound.localPath,records,{plaintext:setting});
+    projectProfiles.example(bound.localPath,records);
+    vscode.window.showInformationMessage('项目配置已保存：'+file+(setting?'（包含明文 API Key）':'（不含密钥）'));
+  }catch(err){vscode.window.showErrorMessage('保存项目 AI 配置失败：'+err.message);}
+ }
+ async function importProjectProfiles(){
+  const bound=project();if(!bound?.localPath){vscode.window.showWarningMessage('请先绑定当前项目');return;}
+  try{
+    const data=projectProfiles.load(bound.localPath);
+    if(!data.profiles.length){vscode.window.showInformationMessage('当前项目没有 AI 配置文件或站点');return;}
+    for(const original of data.profiles){
+      const p={...original};delete p.apiKey;
+      await profiles.upsert(p,original.apiKey||undefined);
+    }
+    vscode.window.showInformationMessage('已载入 '+data.profiles.length+' 个项目 AI 站点；存在明文 Key 的条目已迁入本机 SecretStorage。');
+  }catch(err){vscode.window.showErrorMessage('读取项目 AI 配置失败：'+err.message);}
+ }
  async function manageProfiles(){
-  const items=[{label:'$(add) 添加 AI 站点',kind:'add'},{label:'$(export) 导出站点配置 JSON（不含密钥）',kind:'export'},{label:'$(file-code) 导入站点配置 JSON',kind:'import'},...profiles.all().map(p=>({label:p.name,description:p.api+' · '+p.baseURL,kind:'edit',profile:p}))];
+  const items=[{label:'$(add) 添加 AI 站点',kind:'add'},{label:'$(folder) 保存站点到当前项目',kind:'project-save'},{label:'$(cloud-download) 从当前项目读取站点',kind:'project-load'},{label:'$(export) 导出站点配置 JSON（不含密钥）',kind:'export'},{label:'$(file-code) 导入站点配置 JSON',kind:'import'},...profiles.all().map(p=>({label:p.name,description:p.api+' · '+p.baseURL,kind:'edit',profile:p}))];
   const action=await vscode.window.showQuickPick(items,{title:'管理 AI 端点配置'});
   if(!action)return;
   if(action.kind==='add')return editProfile();
+  if(action.kind==='project-save')return saveProjectProfiles();
+  if(action.kind==='project-load')return importProjectProfiles();
   if(action.kind==='export')return exportProfiles();
   if(action.kind==='import')return importProfiles();
   const choice=await vscode.window.showQuickPick(['编辑站点 / 模型清单','更新 API Key','删除站点'].map(label=>({label})),{title:action.profile.name});
@@ -219,6 +268,6 @@ function activate(context) {
   const target='https://github.com/'+EXECUTION_REPO+'/actions/workflows/issue-agent.yml';
   await vscode.env.openExternal(vscode.Uri.parse(target));
  }
- context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.chat',chat),vscode.commands.registerCommand('dshWorkspace.manageProfiles',manageProfiles),vscode.commands.registerCommand('dshWorkspace.selectProfile',selectProfile),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
+ context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.chat',chat),vscode.commands.registerCommand('dshWorkspace.manageProfiles',manageProfiles),vscode.commands.registerCommand('dshWorkspace.saveProjectProfiles',saveProjectProfiles),vscode.commands.registerCommand('dshWorkspace.importProjectProfiles',importProjectProfiles),vscode.commands.registerCommand('dshWorkspace.selectProfile',selectProfile),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
 }
 module.exports={activate,deactivate(){}};
