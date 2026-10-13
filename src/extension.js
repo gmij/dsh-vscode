@@ -59,7 +59,22 @@ function activate(context) {
   const output=vscode.window.createOutputChannel('DSH ACP Chat');
   output.show(true);
   output.appendLine('项目: '+bound.repository+'\\n工作目录: '+folder+'\\n采用真实 DSH ACP；工具权限默认拒绝。');
-  const client=new ACPClient(command, folder, {provider, model, onUpdate: t=>output.appendLine(t)});
+  const client=new ACPClient(command, folder, {provider, model,
+    onUpdate: t=>output.appendLine(t),
+    onPermission: async request => {
+      const options=(request.options||[]).filter(x=>typeof x.optionId==='string');
+      const title=JSON.stringify(request.toolCall||{}).slice(0,350);
+      output.appendLine('权限审批: '+title);
+      if(!options.length)return null;
+      const choices=options.map(x=>({label:x.name||x.optionId,description:x.kind||'',id:x.optionId}));
+      choices.push({label:'拒绝 / 取消',description:'不执行此次工具请求',id:null});
+      const selected=await vscode.window.showQuickPick(choices,{
+        title:'DSH 工具执行权限审批：'+title.slice(0,85),
+        placeHolder:'请审查命令及影响，再选择是否批准；关闭窗口即拒绝'
+      });
+      return selected?.id || null;
+    }
+  });
   try{
    await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'启动 DSH ACP'},()=>client.start());
    const key='dshWorkspace.session.v1:'+folder;
