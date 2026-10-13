@@ -181,25 +181,6 @@ jobs:
           CHECKPOINT_DIR: ${{ runner.temp }}/recovery-input
           TARGET_DIR: ${{ runner.temp }}/issue-agent
         run: python scripts/recover_design_checkpoints.py
-      - name: Recover Issue 12 validated checkpoints after IPC-03 failure
-        if: ${{ github.event_name == 'issues' && github.event.issue.number == 12 }}
-        uses: actions/download-artifact@v4
-        with:
-          name: issue-agent-result
-          run-id: 38485689045
-          repository: gmij/dsh-vscode
-          github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/issue12-recovery
-      - name: Verify and resume Issue 12 partial IPC stages
-        if: ${{ github.event_name == 'issues' && github.event.issue.number == 12 }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RESUME_RUN_ID: '38485689045'
-          ISSUE_NUMBER: '12'
-          AGENT_ID: detailed
-          CHECKPOINT_DIR: ${{ runner.temp }}/issue12-recovery
-          TARGET_DIR: ${{ runner.temp }}/issue-agent
-        run: python scripts/recover_design_checkpoints.py
       - name: Install DSH only when a model stage remains
         shell: bash
         run: |
