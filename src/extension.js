@@ -61,11 +61,37 @@ function activate(context) {
    vscode.window.showInformationMessage('AI 站点已保存：'+saved.name+'（密钥不会写入配置文件）');
   }catch(error){vscode.window.showErrorMessage('站点配置无效：'+error.message);}
  }
+ async function exportProfiles(){
+  const all=profiles.all();
+  if(!all.length){vscode.window.showWarningMessage('尚无可导出的站点配置');return;}
+  const dest=await vscode.window.showSaveDialog({saveLabel:'导出站点配置（不含密钥）',filters:{JSON:['json']},defaultUri:vscode.Uri.file('dsh-ai-profiles.json')});
+  if(!dest)return;
+  await vscode.workspace.fs.writeFile(dest,Buffer.from(JSON.stringify({schemaVersion:1,profiles:all},null,2),'utf8'));
+  vscode.window.showInformationMessage('已导出站点、协议及模型清单，不包含 API Key。');
+ }
+ async function importProfiles(){
+  const paths=await vscode.window.showOpenDialog({openLabel:'导入 AI 站点配置',canSelectMany:false,filters:{JSON:['json']}});
+  if(!paths?.[0])return;
+  try{
+   const bytes=await vscode.workspace.fs.readFile(paths[0]);
+   if(bytes.byteLength>131072)throw Error('配置文件过大');
+   const data=JSON.parse(Buffer.from(bytes).toString('utf8'));
+   if(data.schemaVersion!==1||!Array.isArray(data.profiles)||data.profiles.length>100)throw Error('配置文件格式不正确');
+   const {validate}=require('./profiles');
+   for(const original of data.profiles){
+    const p=validate({...original,id:newId()});
+    await profiles.upsert({id:p.id,name:p.name,baseURL:p.baseURL,api:p.api,models:p.models});
+   }
+   vscode.window.showInformationMessage('已导入 '+data.profiles.length+' 个站点，请在管理站点中分别设置 API Key。');
+  }catch(error){vscode.window.showErrorMessage('导入失败：'+error.message);}
+ }
  async function manageProfiles(){
-  const items=[{label:'$(add) 添加 AI 站点',kind:'add'},...profiles.all().map(p=>({label:p.name,description:p.api+' · '+p.baseURL,kind:'edit',profile:p}))];
+  const items=[{label:'$(add) 添加 AI 站点',kind:'add'},{label:'$(export) 导出站点配置 JSON（不含密钥）',kind:'export'},{label:'$(file-code) 导入站点配置 JSON',kind:'import'},...profiles.all().map(p=>({label:p.name,description:p.api+' · '+p.baseURL,kind:'edit',profile:p}))];
   const action=await vscode.window.showQuickPick(items,{title:'管理 AI 端点配置'});
   if(!action)return;
   if(action.kind==='add')return editProfile();
+  if(action.kind==='export')return exportProfiles();
+  if(action.kind==='import')return importProfiles();
   const choice=await vscode.window.showQuickPick(['编辑站点 / 模型清单','更新 API Key','删除站点'].map(label=>({label})),{title:action.profile.name});
   if(!choice)return;
   if(choice.label.startsWith('编辑'))return editProfile(action.profile);
