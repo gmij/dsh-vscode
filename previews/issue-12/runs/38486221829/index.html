@@ -1,0 +1,47 @@
+<!doctype html><html lang="zh-CN"><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none';"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ACP 真实对话验证页（Mock）</title><style>*{box-sizing:border-box}body{margin:0;background:#f5f7f6;color:#25332d;font:15px/1.6 system-ui,-apple-system,sans-serif}main{max-width:880px;margin:24px auto;padding:20px;background:#fff;border:1px solid #dde4e0;border-radius:12px}h1{font-size:20px;margin:0 0 4px}.muted{color:#6b7a73;font-size:13px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}select,input,textarea,button{font:inherit;border:1px solid #c8d3cd;border-radius:8px;padding:8px 10px;background:#fff}textarea{width:100%;min-height:64px}button{cursor:pointer;background:#e9f1ee;color:#234c3c}button:disabled{opacity:.5;cursor:not-allowed}.badge{padding:2px 10px;border-radius:999px;background:#eef2f0;font-size:12px}.badge.ready{background:#dcefe5}.badge.connecting{background:#fff2cc}.badge.error{background:#f8d7d3}.msgs{border:1px solid #e1e8e4;border-radius:8px;min-height:140px;max-height:300px;overflow:auto;padding:10px;margin:10px 0}.msg{margin:6px 0;padding:8px 10px;border-radius:8px}.user{background:#eef5f2;text-align:right}.bot{background:#f7f9f8}.tool{border:1px dashed #9bb3a6;background:#fbfdfc;font-size:13px;padding:8px;border-radius:8px;margin:6px 0}.perm{border:1px solid #e0c270;background:#fffbea;padding:10px;border-radius:8px;margin:10px 0}.status{min-height:22px;color:#4a5a53;font-size:13px}.err{border:1px solid #e6b3ab;background:#fdf1ef;padding:8px;border-radius:8px;display:none}@media(max-width:480px){main{margin:8px;padding:12px}}</style></head><body><main>
+<h1>ACP 真实对话验证页</h1><div class="muted">Mock 原型：模拟数据，不调用真实 API，不计真实模型通过。API ID：API-01/02/03；IPC-01…08。</div>
+<div class="row"><span>项目：dsh-vscode</span><select id="site"><option value="deepseek-sim">deepseek-sim</option><option value="local-sim">local-sim</option></select><select id="model"><option value="deepseek-chat">deepseek-chat</option><option value="deepseek-reasoner">deepseek-reasoner</option></select><button id="switch">切换模型</button><span id="state" class="badge">idle</span></div>
+<div class="row"><button id="connect">连接</button><button id="newSession" style="display:none">新建会话</button><span>sessionId：<code id="sid">-</code></span><span id="resumed" class="badge" style="display:none">已恢复</span></div>
+<div class="err" id="errBox"><b id="errCode"></b> <span id="errMsg"></span> <button id="retry">重试</button></div>
+<div class="msgs" id="msgs"><div class="muted" id="empty">尚未开始对话</div></div>
+<div id="permBox" class="perm" style="display:none"><div>工具审批：<b id="permTool"></b>（toolCallId 模拟：tool_read_readme_01）</div><div class="row" id="permBtns"></div></div>
+<textarea id="input" maxlength="8000" placeholder="输入内容，最多 8000 字符"></textarea>
+<div class="row"><button id="send" disabled>发送</button><button id="cancel" disabled>取消</button><button id="restore" disabled>恢复会话</button><span id="count" class="muted">0 / 8000</span></div>
+<div class="status" id="status">就绪</div>
+<details><summary>错误明细</summary><pre id="detail" class="muted">无</pre></details>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+let sid=null,turn=0,busy=false,pending=null,mode='idle';
+const setState=(s)=>{mode=s;const b=$('#state');b.textContent=s;b.className='badge '+(s==='ready'?'ready':s==='connecting'?'connecting':s==='error'?'error':'');
+ const can=s==='ready'&&!busy;$('#send').disabled=!can;$('#cancel').disabled=!busy;$('#restore').disabled=s!=='idle'&&s!=='error';$('#connect').disabled=s==='connecting';};
+const err=(code,msg)=>{$('#errBox').style.display='block';$('#errCode').textContent=code;$('#errMsg').textContent=msg;$('#detail').textContent=code+': '+msg;setState('error');};
+const clearErr=()=>{$('#errBox').style.display='none';};
+const add=(cls,text)=>{$('#empty').style.display='none';const d=document.createElement('div');d.className='msg '+cls;d.textContent=text;$('#msgs').appendChild(d);$('#msgs').scrollTop=1e9;return d;};
+const tool=(text)=>{const d=document.createElement('div');d.className='tool';d.textContent=text;$('#msgs').appendChild(d);};
+function connect(restoreOnly){clearErr();setState('connecting');$('#status').textContent='连接中（Mock）…';
+ setTimeout(()=>{ if($('#site').value==='local-sim'&&!restoreOnly){ err('UPSTREAM_FORBIDDEN','Copilot Requests 权限不足（模拟 403）');$('#status').textContent='403：请检查凭据';return;}
+ if(!sid){sid='sess_8f3a2c9d1e4b7a60';}
+ $('#sid').textContent=sid;$('#resumed').style.display=restoreOnly?'inline-block':'none';$('#newSession').style.display='none';setState('ready');$('#status').textContent='已连接（Mock）';},600);}
+$('#connect').onclick=()=>connect(false);
+$('#restore').onclick=()=>{if(!sid){err('RESUME_FAILED','没有可恢复的 sessionId');$('#newSession').style.display='inline-block';return;}connect(true);};
+$('#newSession').onclick=()=>{sid=null;turn=0;$('#msgs').innerHTML='';$('#msgs').appendChild($('#empty'));$('#empty').style.display='block';connect(false);};
+$('#switch').onclick=()=>{sid=null;turn=0;$('#msgs').innerHTML='';$('#msgs').appendChild($('#empty'));$('#empty').style.display='block';$('#status').textContent='已关闭旧进程，按新键连接';connect(false);};
+$('#input').oninput=e=>{$('#count').textContent=e.target.value.length+' / 8000';};
+$('#send').onclick=()=>{const t=$('#input').value.trim();if(!t)return;if(busy)return;turn++;busy=true;add('user','第'+turn+'轮：'+t);$('#input').value='';$('#count').textContent='0 / 8000';setState('ready');
+ $('#status').textContent='助手回复中（Mock）…';const b=add('bot','思考中…');
+ setTimeout(()=>{ if(turn===1){tool('tool_call tool_read_readme_01 · in_progress · 请求读取 README.md');
+ pending={tool:'read_file README.md'};$('#permTool').textContent=pending.tool;$('#permBox').style.display='block';
+ $('#permBtns').innerHTML='';[['allow-once','允许一次'],['reject-once','拒绝']].forEach(([id,l])=>{const x=document.createElement('button');x.textContent=l;x.onclick=()=>decide(id);$('#permBtns').appendChild(x);});
+ b.textContent='需要审批后继续。';$('#status').textContent='等待工具审批';setState('ready');
+ } else { b.textContent='第二轮回复（Mock）：沿用同一 sessionId '+sid+'。'; finish(); } },800);};
+function decide(optionId){ $('#permBox').style.display='none';
+ tool(optionId==='allow-once'?'已批准：工具结果摘要（Mock）':'已拒绝：工具未执行（cancelled）');
+ if(optionId==='allow-once'){ add('bot','读取完成（Mock），README 摘要已展示。'); } else { add('bot','未执行工具，请发送第二轮。'); }
+ finish(); }
+function finish(){busy=false;$('#status').textContent='完成（Mock）';setState('ready');}
+$('#cancel').onclick=()=>{if(!busy)return;busy=false;$('#permBox').style.display='none';add('bot','已取消（Mock），子进程回到 idle');setState('ready');$('#status').textContent='已取消';};
+$('#retry').onclick=()=>connect(!!sid);
+ setState('idle');
+})();
+</script></main></body></html>
