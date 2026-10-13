@@ -58,16 +58,6 @@
           "type": "string",
           "default": "dsh",
           "description": "Path to installed DSH executable; configure local DSH credentials separately."
-        },
-        "dshWorkspace.provider": {
-          "type": "string",
-          "default": "",
-          "description": "Optional ACP provider route; leave blank to use DSH profile."
-        },
-        "dshWorkspace.model": {
-          "type": "string",
-          "default": "",
-          "description": "Optional ACP model ID; leave blank to use DSH profile."
         }
       }
     }
