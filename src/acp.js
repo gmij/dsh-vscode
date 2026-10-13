@@ -3,6 +3,7 @@ const cp = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const {createPatch}=require('./profiles');
 
 class ACPClient {
   constructor(command, cwd, options = {}) {
@@ -18,18 +19,19 @@ class ACPClient {
     this.provider = options.provider || '';
     this.model = options.model || '';
     this.patchPath = null;
+    this.profile = options.profile || null;
+    this.apiKey = options.apiKey || null;
   }
   async start() {
     let args = ['--profile', 'acp'];
-    if (this.provider && this.model) {
+    if (this.profile || (this.provider && this.model)) {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-vscode-'));
       this.patchPath = path.join(dir, 'acp.json');
-      fs.writeFileSync(this.patchPath, JSON.stringify([{
-        id: 'acp', config: {provider: this.provider, model: this.model}
-      }]), {mode: 0o600});
+      const patch=this.profile?createPatch(this.profile,this.model):[{id:'acp',config:{provider:this.provider,model:this.model}}];
+      fs.writeFileSync(this.patchPath, JSON.stringify(patch), {mode: 0o600});
       args = args.concat(['--patch', this.patchPath]);
     }
-    this.process = cp.spawn(this.command, args, {cwd: this.cwd, env: process.env,
+    this.process = cp.spawn(this.command, args, {cwd: this.cwd, env: this.apiKey ? {...process.env,DSH_WORKSPACE_API_KEY:this.apiKey}:process.env,
       stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, shell: false});
     this.process.stdout.setEncoding('utf8');
     this.process.stdout.on('data', value => this.receive(value));
