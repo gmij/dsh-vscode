@@ -11,6 +11,7 @@ class ACPClient {
     this.pending = new Map();
     this.buffer = '';
     this.onUpdate = options.onUpdate || (() => {});
+    this.onPermission = options.onPermission || (async () => null);
     this.process = null;
     this.closed = false;
     this.command = command;
@@ -59,9 +60,18 @@ class ACPClient {
           else pending.resolve(msg.result);
         }
       } else if (msg.method === 'session/request_permission' && msg.id !== undefined) {
-        // Fail closed: unsafe or unexpected tool approvals never run silently.
-        this.send({jsonrpc: '2.0', id: msg.id, result: {outcome: {outcome: 'cancelled'}}});
-        this.onUpdate('工具权限请求已拒绝（当前预览版本默认拒绝）。');
+        // Ask the host UI; default to rejection on dismiss, error or unknown choice.
+        Promise.resolve().then(() => this.onPermission(msg.params || {}))
+          .then(optionId => {
+            const options = msg.params?.options || [];
+            const valid = options.some(option => option.optionId === optionId);
+            const outcome = valid ? {outcome: 'selected', optionId} : {outcome: 'cancelled'};
+            this.send({jsonrpc: '2.0', id: msg.id, result: {outcome}});
+          })
+          .catch(() => {
+            try { this.send({jsonrpc: '2.0', id: msg.id,
+              result: {outcome: {outcome: 'cancelled'}}}); } catch (_) {}
+          });
       } else if (msg.method === 'session/update') {
         const update = msg.params?.update;
         this.onUpdate(JSON.stringify(update || {}, null, 2).slice(0, 10000));
