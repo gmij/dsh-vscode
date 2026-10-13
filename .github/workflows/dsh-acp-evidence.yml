@@ -5,13 +5,14 @@ on:
     branches: [main]
     paths:
       - scripts/acp_protocol_smoke.py
+      - scripts/acp_e2e.py
       - .github/workflows/dsh-acp-evidence.yml
 permissions:
   contents: read
 jobs:
   acp-smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 7
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +28,10 @@ jobs:
           npm view @deepseek-ai/dsh@0.2.1-alpha.2 dist.integrity > "$RUNNER_TEMP/dsh-package-integrity.txt"
       - name: Probe real ACP stdio initialize and session/new
         run: python scripts/acp_protocol_smoke.py
+      - name: Real multi-prompt and restart ACP test
+        run: python scripts/acp_e2e.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Retain actual protocol evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -34,6 +39,7 @@ jobs:
           name: task01-acp-evidence
           path: |
             ${{ runner.temp }}/dsh-acp-evidence/
+            ${{ runner.temp }}/dsh-acp-e2e/
             ${{ runner.temp }}/dsh-package-integrity.txt
           if-no-files-found: warn
           retention-days: 30
