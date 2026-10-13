@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 587777217aac8688b5e20717d1c0d8dde1c17b77
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 59f8701c3cc23e8f93b2e395f547d75b02d9103d
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 587777217aac8688b5e20717d1c0d8dde1c17b77
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 59f8701c3cc23e8f93b2e395f547d75b02d9103d
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -90,7 +90,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 587777217aac8688b5e20717d1c0d8dde1c17b77
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 59f8701c3cc23e8f93b2e395f547d75b02d9103d
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -113,6 +113,7 @@ jobs:
     timeout-minutes: 35
     permissions:
       contents: read
+      actions: read
       copilot-requests: write
     steps:
       - uses: actions/checkout@v4
@@ -124,7 +125,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 587777217aac8688b5e20717d1c0d8dde1c17b77
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 59f8701c3cc23e8f93b2e395f547d75b02d9103d
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -136,6 +137,33 @@ jobs:
           name: issue-agent-input
           path: ${{ runner.temp }}/issue-agent/
       - run: npm install --prefix "$RUNNER_TEMP/dsh" --no-audit --no-fund @deepseek-ai/dsh@0.2.1-alpha.2
+      - name: Restore validated M1 staged checkpoints from failed run
+        if: ${{ github.event.issue.number == 11 || inputs.issue_number == '11' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: issue-agent-result
+          run-id: 38477633997
+          repository: gmij/dsh-vscode
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/m1-previous-stages
+      - name: Continue M1 design from existing verified checkpoints
+        if: ${{ github.event.issue.number == 11 || inputs.issue_number == '11' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for stage in core tasks pages apis bindings channels; do
+            file="$RUNNER_TEMP/m1-previous-stages/stage-$stage.json"
+            test -s "$file"
+            cp "$file" "$RUNNER_TEMP/issue-agent/stage-$stage.json"
+          done
+          python - <<'PY'
+          import json,os,pathlib
+          folder=pathlib.Path(os.environ['RUNNER_TEMP'])/'issue-agent'
+          for stage in ('core','tasks','pages','apis','bindings','channels'):
+              item=json.loads((folder/f'stage-{stage}.json').read_text())
+              assert isinstance(item,dict) and item
+              print('Reused checkpoint:',stage, 'bytes:',(folder/f'stage-{stage}.json').stat().st_size)
+          PY
       - name: Run registered DSH agent
         id: worker
         run: python scripts/issue_agent.py run
@@ -193,7 +221,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 587777217aac8688b5e20717d1c0d8dde1c17b77
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 59f8701c3cc23e8f93b2e395f547d75b02d9103d
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
@@ -238,7 +266,7 @@ jobs:
           set -euo pipefail
           git init "$RUNNER_TEMP/dsh-engine"
           git -C "$RUNNER_TEMP/dsh-engine" remote add origin https://github.com/gmij/dsh-actions-connectivity.git
-          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 587777217aac8688b5e20717d1c0d8dde1c17b77
+          git -C "$RUNNER_TEMP/dsh-engine" fetch --depth 1 origin 59f8701c3cc23e8f93b2e395f547d75b02d9103d
           git -C "$RUNNER_TEMP/dsh-engine" checkout --detach FETCH_HEAD
           cp -R "$RUNNER_TEMP/dsh-engine/agents" .
           cp -R "$RUNNER_TEMP/dsh-engine/scripts/." scripts/
