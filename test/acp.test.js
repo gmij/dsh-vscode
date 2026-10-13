@@ -16,13 +16,24 @@ test('ACP resolves pending JSON-RPC calls, preserving split frame boundaries', a
  client.close();
 });
 
-test('ACP rejects tool permission by default rather than authorizing execution', () => {
+test('ACP rejects tool permission by default rather than authorizing execution', async () => {
  const client=new ACPClient('unused','/tmp');
  let response;
  client.send=value=>{response=value;};
  client.receive(JSON.stringify({jsonrpc:'2.0',id:22,method:'session/request_permission',params:{}})+'\n');
+ await new Promise(resolve=>setImmediate(resolve));
  assert.equal(response.id,22);
  assert.equal(response.result.outcome.outcome,'cancelled');
+ client.close();
+});
+
+test('ACP forwards user-selected permission option, not arbitrary option', async () => {
+ const client=new ACPClient('unused','/tmp',{onPermission:async()=> 'allow-once'});
+ let response;
+ client.send=value=>{response=value;};
+ client.receive(JSON.stringify({jsonrpc:'2.0',id:23,method:'session/request_permission',params:{options:[{optionId:'allow-once',name:'Allow once'}]}})+'\\n');
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(response.result.outcome,{outcome:'selected',optionId:'allow-once'});
  client.close();
 });
 
