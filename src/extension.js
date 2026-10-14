@@ -3,6 +3,8 @@ const vscode=require('vscode');
 const {verifyBinding,run,parseGitHubRemote}=require('./project');
 const {ACPClient}=require('./acp');
 const {openWorkspacePanel}=require('./workspace_panel');
+const {WorkspaceACPController}=require('./acp_controller');
+const {DSHChatSidebar}=require('./chat_sidebar');
 const {Profiles,newId}=require('./profiles');
 const projectProfiles=require('./project_profiles');
 const KEY='dshWorkspace.project.v1';
@@ -269,6 +271,17 @@ function activate(context) {
   const target='https://github.com/'+EXECUTION_REPO+'/actions/workflows/issue-agent.yml';
   await vscode.env.openExternal(vscode.Uri.parse(target));
  }
+ let sidebar;
+ let controller;
+ const getController=()=>{
+  if(!controller){controller=new WorkspaceACPController({workspace:project(),profiles,workspaceState:context.workspaceState,
+   dshCommand:vscode.workspace.getConfiguration('dshWorkspace').get('dshCommand','dsh'),emit:e=>sidebar?.post(e)});
+   context.subscriptions.push({dispose:()=>controller?.dispose()});}
+  return controller;
+ };
+ sidebar=new DSHChatSidebar({getController,openSettings:()=>vscode.commands.executeCommand('dshWorkspace.openSettings')});
+ context.subscriptions.push(vscode.window.registerWebviewViewProvider('dshWorkspace.chatView',sidebar));
+ context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.openChatView',()=>vscode.commands.executeCommand('dshWorkspace.chatView.focus')));
  context.subscriptions.push(vscode.commands.registerCommand('dshWorkspace.openSettings',()=>openWorkspacePanel(context,{getStatus:()=>{const bound=project();const selected=profiles.selected();return {repository:bound?.repository||'',folder:bound?.localPath||'',model:selected?selected.profile.name+' / '+selected.model:''}}})),vscode.commands.registerCommand('dshWorkspace.setup',setup),vscode.commands.registerCommand('dshWorkspace.chat',chat),vscode.commands.registerCommand('dshWorkspace.manageProfiles',manageProfiles),vscode.commands.registerCommand('dshWorkspace.saveProjectProfiles',saveProjectProfiles),vscode.commands.registerCommand('dshWorkspace.importProjectProfiles',importProjectProfiles),vscode.commands.registerCommand('dshWorkspace.selectProfile',selectProfile),vscode.commands.registerCommand('dshWorkspace.status',status),vscode.commands.registerCommand('dshWorkspace.openDiscussion',openDiscussion),vscode.commands.registerCommand('dshWorkspace.runAgent',runAgent),vscode.commands.registerCommand('dshWorkspace.attachExecutionRepo',attachExecutionRepo),vscode.commands.registerCommand('dshWorkspace.checkExecutionRepo',checkExecutionRepo));
 }
 module.exports={activate,deactivate(){}};
