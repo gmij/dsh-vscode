@@ -1,7 +1,6 @@
 'use strict';
 const vscode=require('vscode');
 const {verifyBinding,run,parseGitHubRemote}=require('./project');
-const {ACPClient}=require('./acp');
 const {openWorkspacePanel}=require('./workspace_panel');
 const {WorkspaceACPController}=require('./acp_controller');
 const {DSHChatSidebar}=require('./chat_sidebar');
@@ -166,93 +165,8 @@ function activate(context) {
   vscode.window.showInformationMessage('当前模型：'+selected.profile.name+' / '+selected.model);
   return selected;
  }
- async function chat() {
-  const bound=project();
-  if(!bound){vscode.window.showWarningMessage('请先执行 Setup Project');return;}
-  const folder=bound.localPath;
-  const fs=require('node:fs');
-  if(!folder || !fs.existsSync(folder)){vscode.window.showErrorMessage('绑定的本地工作目录不存在');return;}
-  const config=vscode.workspace.getConfiguration('dshWorkspace');
-  const command=config.get('dshCommand','dsh');
-  if(!profiles.selected()){const choice=await selectProfile();if(!choice)return;}
-  let selected=profiles.selected();
-  const provider=selected.profile.id;
-  const model=selected.model;
-  const output=vscode.window.createOutputChannel('DSH ACP Chat');
-  output.show(true);
-  output.appendLine('项目: '+bound.repository+'\\n工作目录: '+folder+'\\n采用真实 DSH ACP；工具权限默认拒绝。');
-  let client;
-  const launch=async()=>{
-   const active=profiles.selected();
-   if(!active)throw new Error('尚未选择有效的 AI 站点/模型');
-   const apiKey=await profiles.credentials(active.profile.id);
-   if(!apiKey)throw new Error('请先在管理站点中配置 '+active.profile.name+' 的 API Key');
-   const running=new ACPClient(command,folder,{profile:active.profile,model:active.model,apiKey,
-    onUpdate: t=>output.appendLine(t),
-    onPermission: async request => {
-      const options=(request.options||[]).filter(x=>typeof x.optionId==='string');
-      const title=JSON.stringify(request.toolCall||{}).slice(0,350);
-      output.appendLine('权限审批: '+title);
-      if(!options.length)return null;
-      const choices=options.map(x=>({label:x.name||x.optionId,description:x.kind||'',id:x.optionId}));
-      choices.push({label:'拒绝 / 取消',description:'不执行此次工具请求',id:null});
-      const selected=await vscode.window.showQuickPick(choices,{
-        title:'DSH 工具执行权限审批：'+title.slice(0,85),
-        placeHolder:'请审查命令及影响，再选择是否批准；关闭窗口即拒绝'
-      });
-      return selected?.id || null;
-    }
-   });
-   await running.start();
-   return running;
-  };
-  try{
-   client=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'启动 DSH ACP'},launch);
-   let key='dshWorkspace.session.v2:'+folder+':'+profiles.active().id+':'+profiles.active().model;
-   let saved=context.workspaceState.get(key);
-   let session=null;
-   if(saved && saved.repository===bound.repository && saved.localPath===folder){
-    try{
-     session=await client.call('session/resume',{sessionId:saved.sessionId,cwd:folder,mcpServers:[]});
-     output.appendLine('已恢复同一 ACP 会话: '+saved.sessionId);
-    }catch(err){output.appendLine('恢复失败，不自动替换会话: '+err.message);throw err;}
-   } else {
-    session=await client.call('session/new',{cwd:folder,mcpServers:[]});
-    if(!session?.sessionId)throw new Error('DSH 未返回原生 sessionId');
-    await context.workspaceState.update(key,{sessionId:session.sessionId,repository:bound.repository,localPath:folder});
-    saved={sessionId:session.sessionId};output.appendLine('已创建 ACP 会话: '+session.sessionId);
-   }
-   while(true){
-    const action=await vscode.window.showQuickPick([{label:'$(comment) 发送消息',kind:'message'},{label:'$(server) 切换站点 / 模型',kind:'switch'},{label:'$(gear) 管理站点配置',kind:'manage'},{label:'$(close) 结束聊天',kind:'exit'}],{title:'DSH ACP 对话 · '+profiles.selected().profile.name+' / '+profiles.selected().model});
-    if(!action||action.kind==='exit')break;
-    if(action.kind==='manage'){await manageProfiles();continue;}
-    if(action.kind==='switch'){
-      const previous=profiles.active();const switched=await selectProfile();
-      if(!switched||previous.id===switched.profile.id&&previous.model===switched.model)continue;
-      client.close();client=await launch();
-      key='dshWorkspace.session.v2:'+folder+':'+switched.profile.id+':'+switched.model;
-      saved=context.workspaceState.get(key);
-      if(saved && saved.repository===bound.repository && saved.localPath===folder){
-        await client.call('session/resume',{sessionId:saved.sessionId,cwd:folder,mcpServers:[]});
-        output.appendLine('切换并恢复模型对应会话: '+saved.sessionId);
-      }else{
-        const next=await client.call('session/new',{cwd:folder,mcpServers:[]});
-        if(!next?.sessionId)throw new Error('DSH 未返回 sessionId');
-        saved={sessionId:next.sessionId,repository:bound.repository,localPath:folder};
-        await context.workspaceState.update(key,saved);
-        output.appendLine('切换并创建模型对应会话: '+saved.sessionId);
-      }
-      continue;
-    }
-    const message=await vscode.window.showInputBox({title:'DSH 对话 · '+profiles.selected().model,prompt:'输入消息（对话动作菜单可随时切换站点及模型）'});
-    if(!message)continue;
-    output.appendLine('\\n你: '+message);
-    const result=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'DSH 正在回复...'},()=>client.call('session/prompt',{sessionId:saved.sessionId,prompt:[{type:'text',text:message}]}));
-    output.appendLine('本轮完成: '+JSON.stringify(result));
-   }
-  }catch(err){vscode.window.showErrorMessage('DSH ACP 聊天失败: '+err.message);output.appendLine('错误: '+err.stack);}
-  finally{client?.close();}
- }
+ async function chat(){return vscode.commands.executeCommand('dshWorkspace.openChatView')}
+
  async function attachExecutionRepo(){
   const choice=await vscode.window.showOpenDialog({canSelectFiles:false,canSelectFolders:true,canSelectMany:false,openLabel:'选择 dsh-actions-connectivity 的本地克隆'});
   if(!choice?.[0])return;
