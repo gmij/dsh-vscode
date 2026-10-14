@@ -22,3 +22,13 @@ test('explicit opt in stores plaintext and protects by default via gitignore',()
  assert.equal(fs.readFileSync(path.join(dir,'.gitignore'),'utf8').match(/\.dsh\/ai-profiles\.json/g).length,1);
  if(process.platform!=='win32')assert.equal(fs.statSync(file).mode&0o777,0o600);
 }));
+
+test('Git-tracked project config cannot be read or overwritten with a key',()=>temp(dir=>{
+ const cp=require('node:child_process');
+ cp.execFileSync('git',['init'],{cwd:dir,stdio:'ignore'});
+ ensureIgnore(dir);
+ save(dir,[profile],{plaintext:true});
+ cp.execFileSync('git',['add','-f','.dsh/ai-profiles.json'],{cwd:dir,stdio:'ignore'});
+ assert.throws(()=>load(dir),/已被 Git 跟踪/);
+ assert.throws(()=>save(dir,[profile],{plaintext:true}),/已被 Git 跟踪/);
+}));
