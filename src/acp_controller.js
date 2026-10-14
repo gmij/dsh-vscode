@@ -92,6 +92,7 @@ class WorkspaceACPController{
   if(!selected.profile.models.includes(selected.model))throw fault('INVALID_PROFILE','当前模型已从项目配置中移除');
   const active=this.active;
   const selectedKey=local?.apiKey||await this.profiles.credentials(selected.profile.id);
+  if(this.busy||this.unknown||this.connecting)throw fault('BUSY','当前请求尚未结束');
   const credentialMatches=selectedKey&&createHash('sha256').update(selectedKey).digest('hex')===this.credentialFingerprint;
   const same=credentialMatches&&this.client&&this.sessionId&&active&&['id','baseURL','api'].every(k=>active.profile[k]===selected.profile[k]);
   const group=this.configOptions?.find(o=>o.id==='model')?.options?.find(g=>g.group===selected.profile.id);
@@ -143,7 +144,8 @@ class WorkspaceACPController{
    await this.state.update(this.key(active),{repository:this.workspace.repository,sessionId});
    if(version!==this.generation)throw fault('CANCELLED','会话恢复已取消');
    this.send('connected',{sessionId,profile:active.profile.name,model:active.model});return {};
-  }finally{if(version===this.generation)this.busy=false}
+  }catch(err){if(version===this.generation){this.unknown=true;this.send('connectionLost',{unknown:true})}throw fault('UNKNOWN_RESULT','会话恢复结果未知，请断开后确认')}
+  finally{if(version===this.generation)this.busy=false}
 
  }
  async prompt(text){
