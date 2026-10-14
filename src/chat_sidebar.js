@@ -26,11 +26,11 @@ small{color:var(--vscode-descriptionForeground)}
 #approval{border:1px solid var(--vscode-editorWarning-foreground);padding:8px;margin:8px;display:none}
 </style></head><body>
 <header><strong>DSH Chat</strong><span id="status" aria-live="polite">未连接</span>
-<button id="connect">连接</button><button id="settings">设置</button></header>
+<button id="connect">连接</button><button id="model">模型</button><button id="sessions">会话</button><button id="settings">设置</button></header>
 <div id="messages" role="log" aria-live="polite"><small>先绑定工作区并配置 AI 站点，再连接 DSH。</small></div>
 <div id="approval" role="group" aria-label="工具执行审批"><strong>工具权限请求</strong><p id="approvalText"></p><div class="actions" id="approvalOptions"></div></div>
 <footer><textarea id="prompt" aria-label="发送给 DSH 的消息" placeholder="输入消息…" maxlength="16000"></textarea>
-<div class="actions"><button id="send">发送</button><button id="disconnect">断开</button></div></footer>
+<div class="actions"><button id="send">发送</button><button id="cancel">停止</button><button id="disconnect">断开</button></div></footer>
 <script nonce="${nonce}">
 const vscode=acquireVsCodeApi();
 const status=document.getElementById('status'),messages=document.getElementById('messages');
@@ -38,7 +38,10 @@ const prompt=document.getElementById('prompt');
 const post=(action,extra={})=>vscode.postMessage({action,...extra});
 document.getElementById('connect').onclick=()=>{status.textContent='正在连接…';post('connect')};
 document.getElementById('settings').onclick=()=>post('settings');
+document.getElementById('model').onclick=()=>post('model');
+document.getElementById('sessions').onclick=()=>post('sessions');
 document.getElementById('disconnect').onclick=()=>post('disconnect');
+document.getElementById('cancel').onclick=()=>post('cancel');
 document.getElementById('send').onclick=()=>{const text=prompt.value.trim();if(text){prompt.value='';post('prompt',{text})}};
 prompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('send').click()}});
 function append(text,role){const item=document.createElement('div');item.className='bubble '+role;item.textContent=text;messages.append(item);messages.scrollTop=messages.scrollHeight}
@@ -49,6 +52,7 @@ window.addEventListener('message',e=>{
  if(m.type==='turnStart'){append(p.text||'','user');status.textContent='正在生成…'}
  if(m.type==='update'){const value=p.update||{};const text=value.content?.text||value.text||value.message?.content?.text||'';if(text)append(text,'assistant')}
  if(m.type==='turnComplete')status.textContent='已完成';
+ if(m.type==='cancelling')status.textContent='正在取消…';
  if(m.type==='turnError'){status.textContent='请求失败';append(p.message||'未知错误','assistant')}
  if(m.type==='error'){status.textContent='操作失败';append(p.message||'未知错误','assistant')}
  if(m.type==='permission'){
@@ -64,10 +68,19 @@ window.addEventListener('message',e=>{
   view.webview.onDidReceiveMessage(async m=>{
    if(!m||typeof m.action!=='string')return;
    if(m.action==='settings'){this.openSettings();return}
+   if(m.action==='model'){await vscode.commands.executeCommand('dshWorkspace.selectProfile');await this.getController().connect();return}
+   if(m.action==='sessions'){
+    try{const result=await this.getController().listSessions();const sessions=Array.isArray(result?.sessions)?result.sessions:[];
+      const options=sessions.filter(x=>typeof x.sessionId==='string').map(x=>({label:x.title||x.sessionId,description:x.sessionId,sessionId:x.sessionId}));
+      const item=await vscode.window.showQuickPick(options,{title:'恢复 ACP 会话'});
+      if(item)await this.getController().resume(item.sessionId);
+    }catch(err){this.post({type:'error',payload:{message:err.message}})}return;
+   }
    const controller=this.getController();
    try{
     if(m.action==='connect')await controller.connect();
     else if(m.action==='disconnect')await controller.disconnect();
+    else if(m.action==='cancel')await controller.cancel();
     else if(m.action==='prompt')await controller.prompt(m.text);
     else if(m.action==='decide')controller.decide(m.id,m.optionId);
    }catch(err){this.post({type:'error',payload:{message:err.message}})}
