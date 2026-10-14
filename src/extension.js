@@ -274,7 +274,11 @@ function activate(context) {
  let sidebar;
  let controller;
  const getController=()=>{
-  if(!controller){controller=new WorkspaceACPController({workspace:project(),profiles,workspaceState:context.workspaceState,
+  const bound=project();
+  if(controller && (controller.workspace?.localPath!==bound?.localPath || controller.workspace?.repository!==bound?.repository)){
+   controller.dispose();controller=null;
+  }
+  if(!controller){controller=new WorkspaceACPController({workspace:bound,profiles,workspaceState:context.workspaceState,
    dshCommand:vscode.workspace.getConfiguration('dshWorkspace').get('dshCommand','dsh'),emit:e=>sidebar?.post(e)});
    context.subscriptions.push({dispose:()=>controller?.dispose()});}
   return controller;
