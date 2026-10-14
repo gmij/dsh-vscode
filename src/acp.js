@@ -12,6 +12,7 @@ class ACPClient {
     this.pending = new Map();
     this.buffer = '';
     this.onUpdate = options.onUpdate || (() => {});
+    this.onEvent = options.onEvent || (() => {});
     this.onPermission = options.onPermission || (async () => null);
     this.process = null;
     this.closed = false;
@@ -36,7 +37,7 @@ class ACPClient {
     this.process.stdout.setEncoding('utf8');
     this.process.stdout.on('data', value => this.receive(value));
     this.process.stderr.setEncoding('utf8');
-    this.process.stderr.on('data', value => this.onUpdate('DSH: ' + value.trim().slice(0, 500)));
+    this.process.stderr.on('data', value => { this.onEvent({method:'stderr',params:{message:'DSH diagnostic output'}}); });
     this.process.on('error', err => this.rejectPending(err));
     this.process.on('exit', (code) => {
       this.rejectPending(new Error('DSH ACP process exited: ' + code));
@@ -76,6 +77,7 @@ class ACPClient {
           });
       } else if (msg.method === 'session/update') {
         const update = msg.params?.update;
+        this.onEvent({method:'session/update',params:msg.params||{}});
         this.onUpdate(JSON.stringify(update || {}, null, 2).slice(0, 10000));
       }
     }
