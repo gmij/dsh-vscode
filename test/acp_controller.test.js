@@ -43,6 +43,26 @@ test('permission tickets reject unknown and repeated choices',async()=>{
  assert.equal(a.decide(id,'allow'),false);
  a.dispose();
 });
+test('ACP cancellation uses one-way notification, and session resume preserves requested native ID',async()=>{
+ const root=setup();const store=new Map();
+ const profiles={selected:()=>({profile:{id:'p1',name:'Test',baseURL:'https://example.com/v1',api:'openai-completions',models:['m1']},model:'m1'}),
+                  credentials:async()=>null};
+ const a=new WorkspaceACPController({workspace:{localPath:root,repository:'gmij/test'},profiles,
+    workspaceState:{get:key=>store.get(key),update:async(key,v)=>store.set(key,v)},Client:FakeClient});
+ try{
+  await a.connect();
+  const client=FakeClient.last;
+  client.send=msg=>{client.sent=msg};
+  a.busy=true;
+  assert.equal(await a.cancel(),true);
+  assert.equal(client.sent.method,'session/cancel');
+  assert.equal(client.sent.id,undefined);
+  a.busy=false;
+  await a.resume('native-other');
+  assert.equal(a.sessionId,'native-other');
+  assert.equal(store.get(a.key(a.active)).sessionId,'native-other');
+ }finally{await a.disconnect();fs.rmSync(root,{recursive:true,force:true})}
+});
 test('reject overlapping and oversized prompts',async()=>{
  const a=new WorkspaceACPController({workspace:{localPath:'/tmp'},profiles:{},workspaceState:{}});
  await assert.rejects(()=>a.prompt('hello'),/尚未连接/);
