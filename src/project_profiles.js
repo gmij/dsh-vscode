@@ -6,8 +6,7 @@ const RELATIVE=path.join('.dsh','ai-profiles.json');
 function location(root){if(!root||!path.isAbsolute(root))throw Error('项目目录必须是绝对路径');return path.join(root,RELATIVE);}
 function assertUntrackedLocalFile(root){
  const file=location(root);
- if(!fs.existsSync(file))return;
- if(fs.lstatSync(file).isSymbolicLink()||fs.lstatSync(path.dirname(file)).isSymbolicLink())throw Error('项目 AI 配置不允许符号链接');
+ if(fs.existsSync(file)&&(fs.lstatSync(file).isSymbolicLink()||fs.lstatSync(path.dirname(file)).isSymbolicLink()))throw Error('项目 AI 配置不允许符号链接');
  const {spawnSync}=require('node:child_process');
  const result=spawnSync('git',['ls-files','--error-unmatch','--','.dsh/ai-profiles.json'],{
    cwd:root,encoding:'utf8',stdio:'ignore',timeout:3000,windowsHide:true});
