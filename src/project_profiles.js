@@ -4,9 +4,18 @@ const path=require('node:path');
 const {validate}=require('./profiles');
 const RELATIVE=path.join('.dsh','ai-profiles.json');
 function location(root){if(!root||!path.isAbsolute(root))throw Error('项目目录必须是绝对路径');return path.join(root,RELATIVE);}
+function assertUntrackedLocalFile(root){
+ const file=location(root);
+ if(fs.existsSync(file)&&(fs.lstatSync(file).isSymbolicLink()||fs.lstatSync(path.dirname(file)).isSymbolicLink()))throw Error('项目 AI 配置不允许符号链接');
+ const {spawnSync}=require('node:child_process');
+ const result=spawnSync('git',['ls-files','--error-unmatch','--','.dsh/ai-profiles.json'],{
+   cwd:root,encoding:'utf8',stdio:'ignore',timeout:3000,windowsHide:true});
+ if(result.status===0)throw Error('项目 AI 配置文件已被 Git 跟踪：请先停止跟踪并轮换任何已提交的密钥');
+}
 function load(root){
  const file=location(root);
  if(!fs.existsSync(file))return {schemaVersion:1,profiles:[]};
+ assertUntrackedLocalFile(root);
  const raw=fs.readFileSync(file,'utf8');
  if(raw.length>262144)throw Error('配置文件过大');
  const value=JSON.parse(raw);
@@ -22,6 +31,7 @@ function save(root, profiles,{plaintext=false}={}){
   return result;
  });
  const dest=location(root);fs.mkdirSync(path.dirname(dest),{recursive:true});
+ assertUntrackedLocalFile(root);
  // Atomic write; files containing secrets are owner-readable on POSIX.
  const temp=dest+'.tmp-'+process.pid;
  try{
