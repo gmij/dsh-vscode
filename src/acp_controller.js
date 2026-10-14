@@ -24,7 +24,18 @@ class WorkspaceACPController{
   const version=++this.generation;
   const client=new this.Client(this.command,this.workspace.localPath,{
    profile:selected.profile,model:selected.model,apiKey,
-   onEvent:event=>{if(version===this.generation&&event.method==='session/update')this.send('update',event.params)},
+   onEvent:event=>{
+    if(version!==this.generation||event.method!=='session/update')return;
+    const params=event.params||{};
+    if(this.sessionId&&params.sessionId!==this.sessionId)return;
+    const raw=params.update;
+    if(!raw||typeof raw!=='object')return;
+    const content=raw.content;
+    const value=(content?.type==='text'&&typeof content.text==='string')?content.text:
+                typeof raw.text==='string'?raw.text:'';
+    const text=value.slice(0,65536);
+    if(text)this.send('update',{sessionId:params.sessionId,update:{sessionUpdate:raw.sessionUpdate||raw.type||'text',content:{type:'text',text}}});
+   },
    onPermission:request=>this.requestPermission(request,version)
   });
   this.client=client;
@@ -50,6 +61,7 @@ class WorkspaceACPController{
  async cancel(){
   if(!this.client||!this.sessionId||!this.busy)return false;
   // ACP session/cancel is a notification: do not await an invented reply.
+  if(this.permissions){for(const [id,p] of this.permissions){clearTimeout(p.timer);p.resolve(null);this.permissions.delete(id);this.send('permissionExpired',{id})}}
   this.client.send({jsonrpc:'2.0',method:'session/cancel',params:{sessionId:this.sessionId}});
   this.send('cancelling');
   return true;
