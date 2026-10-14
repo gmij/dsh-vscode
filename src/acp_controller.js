@@ -47,6 +47,27 @@ class WorkspaceACPController{
   }catch(err){await this.disconnect();throw err}
  }
  key(selected){return 'dshWorkspace.session.v2:'+this.workspace.localPath+':'+selected.profile.id+':'+selected.model}
+ async cancel(){
+  if(!this.client||!this.sessionId||!this.busy)return false;
+  // ACP session/cancel is a notification: do not await an invented reply.
+  this.client.send({jsonrpc:'2.0',method:'session/cancel',params:{sessionId:this.sessionId}});
+  this.send('cancelling');
+  return true;
+ }
+ async listSessions(){
+  if(!this.client)throw Error('尚未连接');
+  const result=await this.client.call('session/list',{cwd:this.workspace.localPath,mcpServers:[]});
+  return result;
+ }
+ async resume(sessionId){
+  if(this.busy)throw Error('当前请求尚未完成');
+  if(!this.client||typeof sessionId!=='string'||!sessionId)throw Error('请先连接并选择会话');
+  const result=await this.client.call('session/resume',{sessionId,cwd:this.workspace.localPath,mcpServers:[]});
+  this.sessionId=sessionId;
+  await this.state.update(this.key(this.active),{repository:this.workspace.repository,sessionId});
+  this.send('connected',{sessionId,profile:this.active.profile.name,model:this.active.model});
+  return result;
+ }
  async prompt(text){
   if(!this.client||!this.sessionId)throw Error('尚未连接');
   if(this.busy)throw Error('上一轮请求尚未结束');
