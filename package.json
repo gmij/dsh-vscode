@@ -2,7 +2,7 @@
   "name": "dsh-vscode",
   "displayName": "DSH Workspace",
   "description": "DeepSeek Harness GitHub project binding for VS Code",
-  "version": "0.3.1",
+  "version": "0.4.0-preview.1",
   "publisher": "gmij",
   "private": true,
   "engines": {
