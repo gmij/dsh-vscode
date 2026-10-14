@@ -44,16 +44,18 @@ document.getElementById('disconnect').onclick=()=>post('disconnect');
 document.getElementById('cancel').onclick=()=>post('cancel');
 document.getElementById('send').onclick=()=>{const text=prompt.value.trim();if(text){prompt.value='';post('prompt',{text})}};
 prompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('send').click()}});
-function append(text,role){const item=document.createElement('div');item.className='bubble '+role;item.textContent=text;messages.append(item);messages.scrollTop=messages.scrollHeight}
+let activeAssistant=null;
+function append(text,role){const item=document.createElement('div');item.className='bubble '+role;item.textContent=text;messages.append(item);messages.scrollTop=messages.scrollHeight;return item}
+function appendChunk(text){if(!activeAssistant)activeAssistant=append('','assistant');activeAssistant.textContent+=text;messages.scrollTop=messages.scrollHeight}
 window.addEventListener('message',e=>{
  const m=e.data;if(!m||typeof m.type!=='string')return;const p=m.payload||{};
  if(m.type==='connected')status.textContent='已连接 · '+(p.model||'')+' · '+(p.sessionId||'');
- if(m.type==='disconnected')status.textContent='未连接';
- if(m.type==='turnStart'){append(p.text||'','user');status.textContent='正在生成…'}
- if(m.type==='update'){const value=p.update||{};const text=value.content?.text||value.text||value.message?.content?.text||'';if(text)append(text,'assistant')}
- if(m.type==='turnComplete')status.textContent='已完成';
+ if(m.type==='disconnected'){activeAssistant=null;status.textContent='未连接'};
+ if(m.type==='turnStart'){activeAssistant=null;append(p.text||'','user');status.textContent='正在生成…'}
+ if(m.type==='update'){const value=p.update||{};const text=value.content?.text||value.text||value.message?.content?.text||'';if(text)appendChunk(text)}
+ if(m.type==='turnComplete'){activeAssistant=null;status.textContent='已完成'};
  if(m.type==='cancelling')status.textContent='正在取消…';
- if(m.type==='turnError'){status.textContent='请求失败';append(p.message||'未知错误','assistant')}
+ if(m.type==='turnError'){activeAssistant=null;status.textContent='请求失败';append(p.message||'未知错误','assistant')}
  if(m.type==='error'){status.textContent='操作失败';append(p.message||'未知错误','assistant')}
  if(m.type==='permission'){
   const panel=document.getElementById('approval'),actions=document.getElementById('approvalOptions');
@@ -68,7 +70,7 @@ window.addEventListener('message',e=>{
   view.webview.onDidReceiveMessage(async m=>{
    if(!m||typeof m.action!=='string')return;
    if(m.action==='settings'){this.openSettings();return}
-   if(m.action==='model'){await vscode.commands.executeCommand('dshWorkspace.selectProfile');await this.getController().connect();return}
+   if(m.action==='model'){try{await vscode.commands.executeCommand('dshWorkspace.selectProfile');await this.getController().connect()}catch(err){this.post({type:'error',payload:{message:err.message}})}return}
    if(m.action==='sessions'){
     try{const result=await this.getController().listSessions();const sessions=Array.isArray(result?.sessions)?result.sessions:[];
       const options=sessions.filter(x=>typeof x.sessionId==='string').map(x=>({label:x.title||x.sessionId,description:x.sessionId,sessionId:x.sessionId}));
