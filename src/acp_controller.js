@@ -5,11 +5,12 @@ const projectProfiles=require('./project_profiles');
 class WorkspaceACPController{
  constructor({workspace,profiles,workspaceState,dshCommand='dsh',Client=ACPClient,emit=()=>{}}){
   this.workspace=workspace;this.profiles=profiles;this.state=workspaceState;this.command=dshCommand;this.Client=Client;this.emit=emit;
-  this.client=null;this.sessionId=null;this.active=null;this.busy=false;this.generation=0;
+  this.client=null;this.sessionId=null;this.active=null;this.busy=false;this.generation=0;this.workspaceKey=workspace?.localPath||'';
  }
  send(type,payload={}){this.emit({type,payload});}
  async connect(){
   if(this.busy)throw Error('当前有请求进行中');
+  if(this.client && this.sessionId)await this.disconnect();
   if(!this.workspace?.localPath)throw Error('请先绑定 Git 工作区');
   const selected=this.profiles.selected();
   if(!selected)throw Error('请先选择 AI 站点及模型');
@@ -81,7 +82,7 @@ class WorkspaceACPController{
  async disconnect(){
   this.generation++;
   if(this.permissions){for(const [id,p] of this.permissions){clearTimeout(p.timer);p.resolve(null)}this.permissions.clear()}
-  this.client?.close();this.client=null;this.sessionId=null;this.busy=false;
+  this.client?.close();this.client=null;this.sessionId=null;this.busy=false;this.active=null;
   this.send('disconnected');
  }
  dispose(){void this.disconnect()}
