@@ -2,7 +2,7 @@
   "name": "dsh-vscode",
   "displayName": "DSH Workspace",
   "description": "DeepSeek Harness GitHub project binding for VS Code",
-  "version": "0.4.0-preview.1",
+  "version": "0.4.0-preview.2",
   "publisher": "gmij",
   "private": true,
   "engines": {
@@ -95,14 +95,15 @@
       "dshWorkspace": [
         {
           "id": "dshWorkspace.chatView",
-          "name": "Chat"
+          "name": "Chat",
+          "type": "webview"
         }
       ]
     }
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js && node --check src/workspace_panel.js && node --check src/acp_controller.js && node --check src/chat_sidebar.js"
+    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js && node --check src/workspace_panel.js && node --check src/acp_controller.js && node --check src/chat_sidebar.js && node --check src/ipc.js && node --check src/chat_render.js"
   },
   "license": "MIT"
 }

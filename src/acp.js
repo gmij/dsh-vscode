@@ -42,12 +42,16 @@ class ACPClient {
     this.process.on('error', err => this.rejectPending(err));
     this.process.on('exit', (code) => {
       this.rejectPending(new Error('DSH ACP process exited: ' + code));
+      this.onEvent({method:'process/exit',params:{code}});
     });
-    return this.call('initialize', {protocolVersion: 1, clientCapabilities: {},
-      clientInfo: {name: 'dsh-vscode', version: '0.2.0'}});
+    const initialized=await this.call('initialize', {protocolVersion: 1, clientCapabilities: {},
+      clientInfo: {name: 'dsh-vscode', version: require('../package.json').version}});
+    if(initialized?.protocolVersion!==1){this.close();throw new Error('Unsupported ACP protocol version')}
+    this.capabilities=initialized.agentCapabilities||{};return initialized;
   }
   receive(data) {
     this.buffer += data;
+    if(this.buffer.length>1048576){this.rejectPending(new Error('ACP frame exceeds size limit'));this.close();return;}
     let index;
     while ((index = this.buffer.indexOf('\n')) >= 0) {
       const line = this.buffer.slice(0, index).trim();

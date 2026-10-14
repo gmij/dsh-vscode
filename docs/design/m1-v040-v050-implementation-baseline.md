@@ -61,3 +61,7 @@ Activity Bar 容器 `dshWorkspace`，视图 `dshWorkspace.chatView`；状态栏�
 ## 发布与回滚
 
 0.4 先让用户安装 VSIX 后**看到可打开的工作区设置**，然后才要求真实 ACP；0.5 实现侧栏。每版必须输出 VSIX、SHA-256、版本、三平台结果、屏蔽 Key 的测试日志、Mock/真实差异和回滚步骤。0.4 回退到已安装的 0.3.1，0.5 回退到验证过的 0.4；不同版本的 SessionStore 不覆盖旧数据。未完成真实验收不关闭 M1。
+
+## preview.2 实施补充（#21）
+
+实际字段契约按 [逐 IPC 实施文档](../contracts/README.md) 与 `src/ipc.js` 校验；profile/model 选择保留在可信 Host QuickPick 内，UI selectProfile payload={}。会话键 v3 增加 endpoint/protocol 身份，不自动迁移缺少这些身份的 v2。同站点原生同会话配置切换已实现并有真实 DSH 协议证据，实际模型回复与真实桌面能力仍待验证；[验收矩阵](../m1-preview-2-validation.md) 是当前交付状态，不应以 preview.2 替代 MS-01/MS-02 正式验收。

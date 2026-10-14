@@ -1,0 +1,39 @@
+{
+  "package": "0.2.1-alpha.2",
+  "integrity": "sha512-CkRE0uAOg2ldL2VpfF4cNRsl178CH5nM+8YklPrlMZl5ln0KhVfd42dJuRlgOXZmkpizCRvrVS8LAL+GKfgk0w==",
+  "tests": {
+    "initialize": true,
+    "new": true,
+    "listAfterRestart": true,
+    "resumeAfterRestart": true,
+    "setConfigOptionSameSession": true
+  },
+  "realProvider": "blocked: no credential",
+  "desktop": "blocked: no VS Code environment",
+  "capabilities": {
+    "mcpCapabilities": {
+      "http": true
+    },
+    "promptCapabilities": {
+      "image": false,
+      "audio": false,
+      "embeddedContext": false
+    },
+    "sessionCapabilities": {
+      "close": {},
+      "list": {},
+      "resume": {}
+    }
+  },
+  "configOptionKinds": [
+    {
+      "id": "model",
+      "category": "model"
+    },
+    {
+      "id": "reasoning_effort",
+      "category": "thought_level"
+    }
+  ],
+  "note": "No prompt sent; model selection changes validated with declared test models and an unused fixture key; real model replies and tool permissions remain blocked"
+}
