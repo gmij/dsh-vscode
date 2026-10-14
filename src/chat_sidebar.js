@@ -30,7 +30,7 @@ small{color:var(--vscode-descriptionForeground)}
 </style></head><body>
 <header><strong>DSH Chat</strong><span id="status" aria-live="polite">未连接</span>
 <button id="connect">连接</button><button id="newSession">新会话</button><button id="model">模型</button><button id="sessions">会话</button><button id="settings">设置</button></header>
-<small id="scope" aria-live="polite">模型切换会创建或恢复独立会话；恢复不回放旧消息。</small>
+<small id="scope" aria-live="polite">同站点支持保留会话切换模型；跨站点隔离会话。恢复不回放旧消息。</small>
 <div id="messages" role="log" aria-live="polite"><small>先绑定工作区并配置 AI 站点，再连接 DSH。</small></div>
 <div id="approval" role="group" aria-label="工具执行审批"><strong>工具权限请求</strong><p id="approvalText"></p><div class="actions" id="approvalOptions"></div></div>
 <footer><textarea id="prompt" aria-label="发送给 DSH 的消息" placeholder="输入消息…" maxlength="16000"></textarea>
@@ -69,6 +69,7 @@ window.addEventListener('message',e=>{
  lastSequence=m.sequence;const p=m.payload||{};const type=m.event;
  if(['update','tool','turnComplete','turnError'].includes(type)&&(m.sessionId!==activeSession||m.turnId!==activeTurn))return;
 
+ if(type==='modelChanged'){status.textContent='已连接 · '+p.model+' · '+p.sessionId;setBusy(false)}
  if(type==='snapshot'){activeSession=m.sessionId;activeTurn=m.turnId;setBusy(p.busy||p.unknown);status.textContent=p.unknown?'结果未知，请断开后确认':p.connected?'已连接 · '+p.model:'未连接'}
  if(type==='connected'){pending.clear();activeAssistant=null;activeSession=m.sessionId;activeTurn=null;tools.clear();messages.replaceChildren();setBusy(false);status.textContent='已连接 · '+(p.model||'')+' · '+(p.sessionId||'')}
  if(type==='disconnected'){pending.clear();activeAssistant=null;activeSession=null;activeTurn=null;setBusy(false);status.textContent='未连接';document.getElementById('approval').style.display='none'};
@@ -98,7 +99,7 @@ post('status');
    if(type==='selectProfile'){
     const controller=this.getController();if(controller.busy||controller.unknown)throw Error('当前会话尚未结束');
     const selected=await vscode.commands.executeCommand('dshWorkspace.selectProfile');
-    if(selected)await controller.connect();return {};
+    if(selected)await controller.switchProfile(selected);return {};
    }
    const controller=this.getController();
    if(type==='connect'){if(p.resume===false){const answer=await vscode.window.showWarningMessage('新建会话会断开当前会话，历史仍可在会话列表恢复。',{modal:true},'新建');if(answer!=='新建')return {}}return controller.connect(p);}

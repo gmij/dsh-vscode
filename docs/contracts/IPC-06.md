@@ -8,6 +8,6 @@
 
 ACP 映射：session/list / session/resume。
 
-状态/错误行为：Host 过滤至当前 v3 配置已记录的 owned ID，再用 QuickPick 选择。不是任意 DSH_HOME 会话均可恢复。恢复期间 busy，旧进程响应不得变更当前会话。原生恢复不回放历史文本，UI 明示。
+状态/错误行为：Host 过滤至当前 v3 配置已记录的 owned ID，再用 QuickPick 选择。不是任意 DSH_HOME 会话均可恢复。恢复另一个 ID 前先 session/close 当前会话；恢复期间 busy，旧进程响应不得变更当前会话。原生恢复不回放历史文本，UI 明示。
 
 公共信封、去重、长度和安全错误规则见 [契约索引](README.md)。真实 Provider 验证状态见 [验收矩阵](../m1-preview-2-validation.md)。

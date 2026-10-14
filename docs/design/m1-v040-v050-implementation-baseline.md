@@ -64,4 +64,4 @@ Activity Bar 容器 `dshWorkspace`，视图 `dshWorkspace.chatView`；状态栏�
 
 ## preview.2 实施补充（#21）
 
-实际字段契约按 [逐 IPC 实施文档](../contracts/README.md) 与 `src/ipc.js` 校验；profile/model 选择保留在可信 Host QuickPick 内，UI selectProfile payload={}。会话键 v3 增加 endpoint/protocol 身份，不自动迁移缺少这些身份的 v2。正式原生同会话模型切换和真实桌面能力仍待验证；[验收矩阵](../m1-preview-2-validation.md) 是当前交付状态，不应以 preview.2 替代 MS-01/MS-02 正式验收。
+实际字段契约按 [逐 IPC 实施文档](../contracts/README.md) 与 `src/ipc.js` 校验；profile/model 选择保留在可信 Host QuickPick 内，UI selectProfile payload={}。会话键 v3 增加 endpoint/protocol 身份，不自动迁移缺少这些身份的 v2。同站点原生同会话配置切换已实现并有真实 DSH 协议证据，实际模型回复与真实桌面能力仍待验证；[验收矩阵](../m1-preview-2-validation.md) 是当前交付状态，不应以 preview.2 替代 MS-01/MS-02 正式验收。

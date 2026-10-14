@@ -36,7 +36,7 @@ test('project file credential stays in Host; session is preserved across control
 });
 test('permission tickets reject unknown and repeated choices',async()=>{
  const a=new WorkspaceACPController({workspace:{localPath:'/tmp',repository:'test'},profiles:{},workspaceState:{}});
- a.busy=true;a.sessionId='test-session';
+ a.busy=true;a.turnId='test-turn';a.sessionId='test-session';
  const request=a.requestPermission({sessionId:'test-session',toolCall:{name:'read'},options:[{optionId:'allow',name:'Allow'}]},a.generation);
  const id=[...a.permissions.keys()][0];
  assert.equal(a.decide(id,'not-allowed'),true);
@@ -116,4 +116,14 @@ test('endpoint edits do not restore a session belonging to the old endpoint',asy
 test('disconnect during initialize cannot publish a connected session',async()=>{
  const x=runtime();const starting=deferred();const start=FakeClient.prototype.start;
  try{FakeClient.prototype.start=()=>starting.promise;const connection=x.a.connect();await new Promise(r=>setImmediate(r));await x.a.disconnect();starting.resolve({});await assert.rejects(connection,{code:'CANCELLED'});assert.equal(x.a.sessionId,null);assert(!x.events.some(e=>e.event==='connected'));}finally{FakeClient.prototype.start=start;await x.cleanup()}
+});
+test('advertised same-provider model switching keeps native ID and retires old model ownership',async()=>{
+ const x=runtime();try{
+  const file=path.join(x.root,'.dsh','ai-profiles.json');const config=JSON.parse(fs.readFileSync(file));config.profiles[0].models.push('m2');fs.writeFileSync(file,JSON.stringify(config));
+  await x.a.connect();const oldKey=x.a.key(x.a.active);const sessionId=x.a.sessionId;
+  const value=JSON.stringify(['p1','m2']);x.a.configOptions=[{id:'model',options:[{group:'p1',options:[{value}]}]}];
+  const client=FakeClient.last;client.call=async(method,args)=>{assert.equal(method,'session/set_config_option');assert.equal(args.sessionId,sessionId);return {configOptions:[{id:'model',currentValue:value}]}};
+  const selected={profile:config.profiles[0],model:'m2'};await x.a.switchProfile(selected);
+  assert.equal(x.a.sessionId,sessionId);assert.equal(x.a.active.model,'m2');assert.equal(x.a.state.get(oldKey),undefined);assert(x.events.some(e=>e.event==='modelChanged'));
+ }finally{await x.cleanup()}
 });

@@ -54,7 +54,7 @@ class WorkspaceACPController{
    },
    onPermission:request=>this.requestPermission(request,version)
   });
-  this.client=client;this.redact=value=>String(value).split(apiKey).join('[已隐藏]');
+  this.client=client;this.credentialFingerprint=createHash('sha256').update(apiKey).digest('hex');this.redact=value=>String(value).split(apiKey).join('[已隐藏]');
   try{
    await client.start();
    if(version!==this.generation)throw fault('CANCELLED','连接已取消');
@@ -73,6 +73,7 @@ class WorkspaceACPController{
     this.sessionId=result.sessionId;
     await this.state.update(storeKey,{repository:this.workspace.repository,sessionId:this.sessionId});
    }
+   this.configOptions=Array.isArray(result?.configOptions)?result.configOptions:[];
    this.owned.add(this.sessionId);
    await this.state.update(storeKey+':owned',[...this.owned]);
    if(version!==this.generation)throw fault('CANCELLED','连接已取消');
@@ -82,6 +83,37 @@ class WorkspaceACPController{
   }finally{this.connecting=false}
  }
  key(selected){const p=selected.profile;return 'dshWorkspace.session.v3:'+createHash('sha256').update(JSON.stringify([require('node:fs').realpathSync(this.workspace.localPath),this.workspace.repository,p.id,p.baseURL,p.api,selected.model])).digest('hex')}
+ async switchProfile(selected){
+  if(this.busy||this.unknown||this.connecting)throw fault('BUSY','当前请求尚未结束');
+  if(!selected)return {};
+  const config=projectProfiles.load(this.workspace.localPath);
+  const local=config.profiles.find(p=>p.id===selected.profile.id);
+  if(local)selected={profile:local,model:selected.model};
+  if(!selected.profile.models.includes(selected.model))throw fault('INVALID_PROFILE','当前模型已从项目配置中移除');
+  const active=this.active;
+  const selectedKey=local?.apiKey||await this.profiles.credentials(selected.profile.id);
+  const credentialMatches=selectedKey&&createHash('sha256').update(selectedKey).digest('hex')===this.credentialFingerprint;
+  const same=credentialMatches&&this.client&&this.sessionId&&active&&['id','baseURL','api'].every(k=>active.profile[k]===selected.profile[k]);
+  const group=this.configOptions?.find(o=>o.id==='model')?.options?.find(g=>g.group===selected.profile.id);
+  const choice=group?.options?.find(o=>{try{const route=JSON.parse(o.value);return route[0]===selected.profile.id&&route[1]===selected.model}catch(_){return false}});
+  if(!same||!choice)return this.connect();
+  if(active.model===selected.model)return {};
+  this.busy=true;const version=this.generation;const sessionId=this.sessionId;
+  try{
+   const result=await this.client.call('session/set_config_option',{sessionId,configId:'model',value:choice.value});
+   if(version!==this.generation)throw fault('CANCELLED','切换已取消');
+   const model=result?.configOptions?.find(o=>o.id==='model');
+   if(model?.currentValue!==choice.value)throw fault('UNKNOWN_RESULT','模型切换未得到确认');
+   const oldKey=this.key(active);const owned=this.state.get(oldKey+':owned',[]).filter(id=>id!==sessionId);
+   await this.state.update(oldKey,undefined);await this.state.update(oldKey+':owned',owned);
+   this.active=selected;this.configOptions=result.configOptions;
+   const newKey=this.key(selected);this.owned=new Set(this.state.get(newKey+':owned',[]));this.owned.add(sessionId);
+   await this.state.update(newKey,{repository:this.workspace.repository,sessionId});await this.state.update(newKey+':owned',[...this.owned]);
+   if(version!==this.generation)throw fault('CANCELLED','切换已取消');
+   this.send('modelChanged',{sessionId,profile:selected.profile.name,model:selected.model});return {sessionId};
+  }catch(err){if(version===this.generation){this.unknown=true;this.send('connectionLost',{unknown:true})}throw fault('UNKNOWN_RESULT','模型切换结果未知，请断开后确认')}
+  finally{if(version===this.generation)this.busy=false}
+ }
  async cancel(){
   if(!this.client||!this.sessionId||!this.busy)return false;
   // ACP session/cancel is a notification: do not await an invented reply.
@@ -104,9 +136,10 @@ class WorkspaceACPController{
   if(!this.client||typeof sessionId!=='string'||!sessionId)throw Error('请先连接并选择会话');
   this.busy=true;const version=this.generation;const active=this.active;
   try{
+   if(this.sessionId!==sessionId)await this.client.call('session/close',{sessionId:this.sessionId});
    const result=await this.client.call('session/resume',{sessionId,cwd:this.workspace.localPath,mcpServers:[]});
    if(version!==this.generation)throw fault('CANCELLED','会话恢复已取消');
-   this.sessionId=sessionId;
+   this.sessionId=sessionId;this.configOptions=Array.isArray(result?.configOptions)?result.configOptions:[];
    await this.state.update(this.key(active),{repository:this.workspace.repository,sessionId});
    if(version!==this.generation)throw fault('CANCELLED','会话恢复已取消');
    this.send('connected',{sessionId,profile:active.profile.name,model:active.model});return {};
@@ -133,7 +166,7 @@ class WorkspaceACPController{
  }
  requestPermission(request,version){
   return new Promise(resolve=>{
-   if(version!==this.generation||this.unknown||!this.busy||!this.sessionId||request?.sessionId!==this.sessionId){resolve(null);return}
+   if(version!==this.generation||this.unknown||!this.busy||!this.turnId||!this.sessionId||request?.sessionId!==this.sessionId){resolve(null);return}
    const options=Array.isArray(request?.options)?request.options.filter(o=>typeof o.optionId==='string'&&o.optionId.length<=256&&o.kind!=='allow_always').slice(0,16).map(o=>({optionId:o.optionId,name:this.redact?this.redact(String(o.name||o.optionId)).slice(0,80):String(o.name||o.optionId).slice(0,80)})):[];
    if(!options.length){resolve(null);return}
    const id=require('node:crypto').randomUUID();

@@ -36,7 +36,7 @@ function createPatch(profile,model){
   {id:'agent-default-model',config:{provider:p.id,model}},
   {id:'llm-pi-ai',config:{providers:{[p.id]:{
     api:p.api,apiKeyEnv:'DSH_WORKSPACE_API_KEY',baseURL:p.baseURL,
-    models:[{id:model}],retryPolicy:{mode:'normal',maxRetries:0}
+    models:p.models.map(id=>({id})),retryPolicy:{mode:'normal',maxRetries:0}
   }}}}
  ];
 }
