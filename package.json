@@ -57,6 +57,10 @@
       {
         "command": "dshWorkspace.importProjectProfiles",
         "title": "DSH Workspace: Load AI Endpoints from Project"
+      },
+      {
+        "command": "dshWorkspace.openSettings",
+        "title": "DSH Workspace: Open Workspace Settings"
       }
     ],
     "configuration": {
@@ -77,7 +81,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js"
+    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js && node --check src/workspace_panel.js"
   },
   "license": "MIT"
 }
