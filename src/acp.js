@@ -17,6 +17,7 @@ class ACPClient {
     this.process = null;
     this.closed = false;
     this.command = command;
+    this.launchArgs = options.launchArgs || ['--profile','acp'];
     this.provider = options.provider || '';
     this.model = options.model || '';
     this.patchPath = null;
@@ -24,7 +25,7 @@ class ACPClient {
     this.apiKey = options.apiKey || null;
   }
   async start() {
-    let args = ['--profile', 'acp'];
+    let args = [...this.launchArgs];
     if (this.profile || (this.provider && this.model)) {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-vscode-'));
       this.patchPath = path.join(dir, 'acp.json');
