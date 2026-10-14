@@ -61,6 +61,10 @@
       {
         "command": "dshWorkspace.openSettings",
         "title": "DSH Workspace: Open Workspace Settings"
+      },
+      {
+        "command": "dshWorkspace.openChatView",
+        "title": "DSH Workspace: Open Chat Sidebar"
       }
     ],
     "configuration": {
@@ -77,11 +81,28 @@
           "description": "在项目 .dsh/ai-profiles.json 中明文保存 API Key（危险）。需要显式开启并再次确认。默认关闭。"
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dshWorkspace",
+          "title": "DSH Workspace",
+          "icon": "resources/dsh.svg"
+        }
+      ]
+    },
+    "views": {
+      "dshWorkspace": [
+        {
+          "id": "dshWorkspace.chatView",
+          "name": "Chat"
+        }
+      ]
     }
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js && node --check src/workspace_panel.js"
+    "check": "node --check src/extension.js && node --check src/project.js && node --check src/acp.js && node --check src/profiles.js && node --check src/project_profiles.js && node --check src/workspace_panel.js && node --check src/acp_controller.js && node --check src/chat_sidebar.js"
   },
   "license": "MIT"
 }
